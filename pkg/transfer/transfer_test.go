@@ -19,19 +19,15 @@ func TestService_Card2Card(t *testing.T) {
 
 	cardSvc := card.NewService("510621")
 	transactionSvc := transaction.NewService()
-	inBank := Commission{
-		Percent: 0,
-		Minimum: 0,
+	commissions := Commission{
+		PercentInBank:       0,
+		MinimumInBank:       0,
+		PercentToDiffBank:   0.5,
+		MinimumToDiffBank:   10_00,
+		PercentBetweenBanks: 1.5,
+		MinimumBetweenBanks: 30_00,
 	}
-	toDifferentBank := Commission{
-		Percent: 0.5,
-		Minimum: 10_00,
-	}
-	betweenDifferentBank := Commission{
-		Percent: 1.5,
-		Minimum: 30_00,
-	}
-	transferSvc := NewService(cardSvc, transactionSvc, inBank, toDifferentBank, betweenDifferentBank)
+	transferSvc := NewService(cardSvc, transactionSvc, commissions)
 
 	cardSvc.NewCard("BABANK", 10_000_00, card.Rub, "5106212879499054")
 	cardSvc.NewCard("BABANK", 22_433_00, card.Rub, "5106212548197220")
