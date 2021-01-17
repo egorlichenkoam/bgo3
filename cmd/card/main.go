@@ -109,5 +109,5 @@ func sumConcurrently() {
 }
 
 func printVersion() {
-	fmt.Println("02.03.02")
+	fmt.Println("02.03.02_01")
 }
