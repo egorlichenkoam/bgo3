@@ -5,6 +5,8 @@ import (
 	"01/pkg/money"
 	"math/rand"
 	"sort"
+	"strconv"
+	"sync"
 	"time"
 )
 
@@ -118,7 +120,7 @@ func (s *Service) TranslateMcc(code Mcc) string {
 	return result
 }
 
-func (s *Service) SortedByType(card *card.Card, fromTo Type) []Transaction {
+func (s *Service) ByCardAndType(card *card.Card, fromTo Type) []Transaction {
 	result := make([]Transaction, 0)
 	cardTransactions := s.ByCard(card)
 	//транзакции по типу (списание/зачисление)
@@ -128,8 +130,65 @@ func (s *Service) SortedByType(card *card.Card, fromTo Type) []Transaction {
 			result = append(result, tx)
 		}
 	}
+	return result
+}
+
+func (s *Service) SortByCardAndType(card *card.Card, fromTo Type) []Transaction {
+	result := s.ByCardAndType(card, fromTo)
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Amount > result[j].Amount
 	})
+	return result
+}
+
+func makeYearMonthKey(unixTime int64) string {
+	t := time.Unix(unixTime, 0)
+	startYear := strconv.Itoa(t.Year())
+	startMonth := strconv.Itoa(int(t.Month()))
+	if len(startMonth) == 1 {
+		startMonth = "0" + startMonth
+	}
+	return startYear + "_" + startMonth
+}
+
+func (s *Service) GroupByCardAndYearMonth(card *card.Card, startTime, endTime int64, fromTo Type) map[string][]Transaction {
+	if startTime < endTime {
+		groupedTransactions := make(map[string][]Transaction, 0)
+		next := time.Unix(startTime, 0)
+		for next.Before(time.Unix(endTime, 0)) {
+			groupedTransactions[makeYearMonthKey(next.Unix())] = make([]Transaction, 0)
+			next = next.AddDate(0, 1, 0)
+		}
+		groupedTransactions[makeYearMonthKey(endTime)] = make([]Transaction, 0)
+		transactions := s.ByCardAndType(card, fromTo)
+		for n := range transactions {
+			tx := transactions[n]
+			mapKey := makeYearMonthKey(tx.Datetime)
+			transactions, found := groupedTransactions[mapKey]
+			if found {
+				groupedTransactions[mapKey] = append(transactions, tx)
+			}
+		}
+		return groupedTransactions
+	}
+	return nil
+}
+
+func (s *Service) SumConcurrentlyByCardAndYearMonth(card *card.Card, startTime, endTime int64, fromTo Type) (result sync.Map) {
+	groupedTransactions := s.GroupByCardAndYearMonth(card, startTime, endTime, fromTo)
+	count := len(groupedTransactions)
+	wg := sync.WaitGroup{}
+	wg.Add(count)
+	for key, value := range groupedTransactions {
+		go func(mark string, transactions []Transaction) {
+			sum := money.Money(0)
+			for i := range transactions {
+				sum += transactions[i].Amount
+			}
+			result.Store(mark, sum)
+			wg.Done()
+		}(key, value)
+	}
+	wg.Wait()
 	return result
 }

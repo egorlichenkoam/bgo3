@@ -76,7 +76,7 @@ func TestService_SortedByType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := transactionSvc.SortedByType(tt.args.card, From); !areTransactionsEquals(got, tt.want) {
+			if got := transactionSvc.SortByCardAndType(tt.args.card, From); !areTransactionsEquals(got, tt.want) {
 				t.Errorf("\n got  = %v,\n want = %v", got, tt.want)
 			}
 		})
