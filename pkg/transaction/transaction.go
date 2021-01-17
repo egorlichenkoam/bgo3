@@ -4,6 +4,7 @@ import (
 	"01/pkg/card"
 	"01/pkg/money"
 	"math/rand"
+	"sort"
 	"time"
 )
 
@@ -113,5 +114,21 @@ func (s *Service) TranslateMcc(code Mcc) string {
 	if ok {
 		result = value
 	}
+	return result
+}
+
+func (s *Service) SortedByType(card *card.Card, fromTo Type) []Transaction {
+	result := make([]Transaction, 0)
+	cardTransactions := s.ByCard(card)
+	//транзакции по типу (списание/зачисление)
+	for n := range cardTransactions {
+		tx := cardTransactions[n]
+		if tx.Type == fromTo {
+			result = append(result, tx)
+		}
+	}
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].Amount > result[j].Amount
+	})
 	return result
 }
