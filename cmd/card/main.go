@@ -10,19 +10,15 @@ import (
 func main() {
 	cardSvc := card.NewService("510621")
 	transactionSvc := transaction.NewService()
-	inBank := transfer.Commission{
-		Percent: 0,
-		Minimum: 0,
+	commissions := transfer.Commission{
+		PercentInBank:       0,
+		MinimumInBank:       0,
+		PercentToDiffBank:   0.5,
+		MinimumToDiffBank:   10_00,
+		PercentBetweenBanks: 1.5,
+		MinimumBetweenBanks: 30_00,
 	}
-	toDifferentBank := transfer.Commission{
-		Percent: 0.5,
-		Minimum: 10_00,
-	}
-	betweenDifferentBank := transfer.Commission{
-		Percent: 1.5,
-		Minimum: 30_00,
-	}
-	transferSvc := transfer.NewService(cardSvc, transactionSvc, inBank, toDifferentBank, betweenDifferentBank)
+	transferSvc := transfer.NewService(cardSvc, transactionSvc, commissions)
 
 	cardSvc.NewCard("BANK", 10_000_00, card.Rub, "5106212879499054")
 	cardSvc.NewCard("BANK", 20_000_00, card.Rub, "5106212548197220")

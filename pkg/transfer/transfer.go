@@ -15,25 +15,25 @@ var (
 )
 
 type Commission struct {
-	Percent float64
-	Minimum money.Money
+	PercentInBank       float64
+	MinimumInBank       money.Money
+	PercentToDiffBank   float64
+	MinimumToDiffBank   money.Money
+	PercentBetweenBanks float64
+	MinimumBetweenBanks money.Money
 }
 
 type Service struct {
-	CardSvc              *card.Service
-	TransactionSvc       *transaction.Service
-	InBank               Commission
-	ToDifferentBank      Commission
-	BetweenDifferentBank Commission
+	CardSvc        *card.Service
+	TransactionSvc *transaction.Service
+	commissions    Commission
 }
 
-func NewService(cardSvc *card.Service, transactionSvc *transaction.Service, inBank Commission, toDifferentBank Commission, betweenDifferentBank Commission) *Service {
+func NewService(cardSvc *card.Service, transactionSvc *transaction.Service, commissions Commission) *Service {
 	return &Service{
-		CardSvc:              cardSvc,
-		TransactionSvc:       transactionSvc,
-		InBank:               inBank,
-		ToDifferentBank:      toDifferentBank,
-		BetweenDifferentBank: betweenDifferentBank,
+		CardSvc:        cardSvc,
+		TransactionSvc: transactionSvc,
+		commissions:    commissions,
 	}
 }
 
@@ -46,7 +46,8 @@ func (s *Service) Card2Card(from, to string, amount money.Money) (total money.Mo
 	}
 	cardFrom := s.CardSvc.ByNumber(from)
 	cardTo := s.CardSvc.ByNumber(to)
-	total = s.total(amount, s.commission(cardFrom, cardTo))
+	percent, minimum := s.commission(cardFrom, cardTo)
+	total = s.total(amount, percent, minimum)
 	if cardFrom == nil {
 		e = errCardFromNotFound
 		return
@@ -62,20 +63,20 @@ func (s *Service) Card2Card(from, to string, amount money.Money) (total money.Mo
 	return
 }
 
-func (s *Service) commission(cardFrom, cardTo *card.Card) *Commission {
+func (s *Service) commission(cardFrom, cardTo *card.Card) (percent float64, minimum money.Money) {
 	if cardFrom == nil && cardTo == nil {
-		return &s.BetweenDifferentBank
+		return s.commissions.PercentBetweenBanks, s.commissions.MinimumBetweenBanks
 	}
 	if cardFrom != nil && cardTo == nil {
-		return &s.ToDifferentBank
+		return s.commissions.PercentToDiffBank, s.commissions.MinimumToDiffBank
 	}
-	return &s.InBank
+	return s.commissions.PercentInBank, s.commissions.MinimumInBank
 }
 
-func (s *Service) total(amount money.Money, commission *Commission) money.Money {
-	internalCommission := money.Money(float64(amount) / 100 * commission.Percent)
-	if internalCommission < commission.Minimum {
-		internalCommission = commission.Minimum
+func (s *Service) total(amount money.Money, percent float64, minimum money.Money) money.Money {
+	internalCommission := money.Money(float64(amount) / 100 * percent)
+	if internalCommission < minimum {
+		internalCommission = minimum
 	}
 	return amount + internalCommission
 }

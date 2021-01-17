@@ -63,6 +63,7 @@ func (s *Service) ById(id int64) *Transaction {
 	}
 	return nil
 }
+
 func (s *Service) ByCard(card *card.Card) []Transaction {
 	result := make([]Transaction, 0)
 	for _, transaction := range s.Transactions {
