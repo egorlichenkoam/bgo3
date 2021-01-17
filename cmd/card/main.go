@@ -5,6 +5,8 @@ import (
 	"01/pkg/transaction"
 	"01/pkg/transfer"
 	"fmt"
+	"sort"
+	"time"
 )
 
 func main() {
@@ -35,6 +37,10 @@ func main() {
 
 	printCards(cardSvc.Cards)
 	printTransactions(transactionSvc.Transactions)
+
+	sumConcurrently()
+
+	printVersion()
 }
 
 func printCards(cards []card.Card) {
@@ -51,6 +57,57 @@ func printTransactions(txs []transaction.Transaction) {
 	fmt.Println("")
 }
 
+func sumConcurrently() {
+	cardSvc := card.NewService("510621")
+	transactionSvc := transaction.NewService()
+	card00 := cardSvc.NewCard("BABANK", 1000_000_00, card.Rub, "5106212879499054")
+
+	tx := transactionSvc.CreateTransaction(1_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 12, 1, 0, 0, 0, 0, time.Local).Unix()
+	tx = transactionSvc.CreateTransaction(12_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 12, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(10_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 11, 1, 0, 0, 0, 0, time.Local).Unix()
+	tx = transactionSvc.CreateTransaction(22_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 11, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(100_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 9, 1, 0, 0, 0, 0, time.Local).Unix()
+	tx = transactionSvc.CreateTransaction(200_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 9, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(800_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 6, 1, 0, 0, 0, 0, time.Local).Unix()
+	tx = transactionSvc.CreateTransaction(2_000_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 6, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(8_700_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 3, 1, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(3_000_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 4, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(1_000_000_00, "", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 1, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	result := transactionSvc.SumConcurrentlyByCardAndYearMonth(card00, time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local).Unix(), time.Date(2020, 12, 1, 0, 0, 0, 0, time.Local).Unix(), transaction.From)
+
+	fmt.Println("------------------------------------------------------------------ ")
+	keys := make([]string, 0)
+	result.Range(func(key, value interface{}) bool {
+		k, _ := key.(string)
+		keys = append(keys, k)
+		return true
+	})
+	sort.Strings(keys)
+	for _, key := range keys {
+		value, _ := result.Load(key)
+		fmt.Println(key, " - ", value)
+	}
+	fmt.Println("------------------------------------------------------------------ \n")
+}
+
 func printVersion() {
-	fmt.Println("02.03.01")
+	fmt.Println("02.03.02")
 }
