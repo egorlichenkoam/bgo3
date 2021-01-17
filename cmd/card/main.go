@@ -105,7 +105,7 @@ func sumConcurrently() {
 		value, _ := result.Load(key)
 		fmt.Println(key, " - ", value)
 	}
-	fmt.Println("------------------------------------------------------------------ \n")
+	fmt.Println("------------------------------------------------------------------")
 }
 
 func printVersion() {
