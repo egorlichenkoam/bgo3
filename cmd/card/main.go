@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	cardSvc := card.NewService()
+	cardSvc := card.NewService("510621")
 	transactionSvc := transaction.NewService()
 	inBank := transfer.Commission{
 		Percent: 0,
@@ -24,26 +24,21 @@ func main() {
 	}
 	transferSvc := transfer.NewService(cardSvc, transactionSvc, inBank, toDifferentBank, betweenDifferentBank)
 
-	cardSvc.NewCard("BANK", 10_000_00, card.RUB, "4263141548036728")
-	cardSvc.NewCard("BANK", 20_000_00, card.RUB, "4759718447175045")
-	cardSvc.NewCard("BANK", 30_000_00, card.RUB, "4806551844152926")
+	cardSvc.NewCard("BANK", 10_000_00, card.Rub, "5106212879499054")
+	cardSvc.NewCard("BANK", 20_000_00, card.Rub, "5106212548197220")
+	cardSvc.NewCard("BANK", 30_000_00, card.Rub, "5106211562724463")
 
 	printCards(cardSvc.Cards)
 	printTransactions(transactionSvc.Transactions)
 
-	fmt.Println(transferSvc.Card2Card("4806551844152926", "4759718447175045", 10_000_00))
-	fmt.Println(transferSvc.Card2Card("4759718447175045", "4263141548036728", 10_000_00))
-	fmt.Println(transferSvc.Card2Card("4263141548036728", "4450209454897335", 10_000_00))
-	fmt.Println(transferSvc.Card2Card("4806551844152926", "4759718447175045", 5_000_00))
-	fmt.Println(transferSvc.Card2Card("4806551844152926", "4759718447175045", 2_000_00))
-	fmt.Println(transferSvc.Card2Card("4759718447175045", "4806551844152926", 8_000_00))
-	fmt.Println(transferSvc.Card2Card("4806551844152926", "4759718447175045", 40_000_00))
+	fmt.Println(transferSvc.Card2Card(transferSvc.CardSvc.Cards[0].Number, transferSvc.CardSvc.Cards[1].Number, 1_000_00))
+	fmt.Println(transferSvc.Card2Card(transferSvc.CardSvc.Cards[1].Number, transferSvc.CardSvc.Cards[2].Number, 1_000_00))
+	fmt.Println(transferSvc.Card2Card(transferSvc.CardSvc.Cards[2].Number, transferSvc.CardSvc.Cards[0].Number, 1_000_00))
 
 	fmt.Println("")
 
 	printCards(cardSvc.Cards)
 	printTransactions(transactionSvc.Transactions)
-	printCards(cardSvc.Cards)
 }
 
 func printCards(cards []card.Card) {

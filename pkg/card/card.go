@@ -3,12 +3,14 @@ package card
 import (
 	"01/pkg/money"
 	"math/rand"
+	"strconv"
+	"strings"
 )
 
 type Currency string
 
 const (
-	RUB Currency = "RUB"
+	Rub Currency = "RUB"
 )
 
 type Card struct {
@@ -25,11 +27,14 @@ func (s *Service) NewCard(issuer string, balance money.Money, currency Currency,
 }
 
 type Service struct {
-	Cards []Card
+	IssuerId string
+	Cards    []Card
 }
 
-func NewService() *Service {
-	return &Service{}
+func NewService(issuerId string) *Service {
+	return &Service{
+		IssuerId: issuerId,
+	}
 }
 
 func (s *Service) Add(card Card) *Card {
@@ -38,10 +43,42 @@ func (s *Service) Add(card Card) *Card {
 }
 
 func (s *Service) ByNumber(number string) (card *Card) {
-	for i, c := range s.Cards {
-		if c.Number == number {
-			return &s.Cards[i]
+	card = nil
+	if s.isOurCard(number) {
+		for i, c := range s.Cards {
+			if c.Number == number {
+				card = &s.Cards[i]
+			}
+		}
+		if card == nil {
+			card = s.NewCard("", 0, Rub, number)
 		}
 	}
-	return nil
+	return
+}
+
+func (s *Service) isOurCard(number string) bool {
+	if strings.HasPrefix(number, s.IssuerId) {
+		return true
+	}
+	return false
+}
+
+func (s *Service) CheckByLuna(number string) bool {
+	numberInString := strings.Split(strings.ReplaceAll(number, " ", ""), "")
+	sum := 0
+	for idx := range numberInString {
+		if sn, e := strconv.Atoi(numberInString[idx]); e == nil {
+			if (idx+1)%2 > 0 {
+				sn = sn * 2
+				if sn > 9 {
+					sn = sn - 9
+				}
+			}
+			sum += sn
+		} else {
+			return false
+		}
+	}
+	return sum%10 == 0
 }
