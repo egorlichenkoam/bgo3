@@ -50,3 +50,7 @@ func printTransactions(txs []transaction.Transaction) {
 	}
 	fmt.Println("")
 }
+
+func printVersion() {
+	fmt.Println("02.03.01")
+}
