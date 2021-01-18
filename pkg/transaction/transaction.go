@@ -194,6 +194,7 @@ func (s *Service) SumByPersonAndMccs(transactions []*Transaction, person *person
 		for _, c := range person.Cards {
 			if tx.Card == c {
 				result[tx.Mcc] += tx.Amount
+				break
 			}
 		}
 	}
@@ -254,5 +255,37 @@ func (s *Service) SumByPersonAndMccsWithChannels(transactions []*Transaction, pe
 			break
 		}
 	}
+	return result
+}
+
+func (s *Service) SumByPersonAndMccsWithMutexStraightToMap(transactions []*Transaction, person *person.Person) map[Mcc]money.Money {
+	partCount := 10
+	wg := sync.WaitGroup{}
+	wg.Add(partCount)
+	mu := sync.Mutex{}
+	result := make(map[Mcc]money.Money)
+	partSize := len(transactions) / partCount
+	for i := 0; i < partCount; i++ {
+		part := transactions[i*partSize : (i+1)*partSize]
+		if i == partCount-1 {
+			for _, value := range transactions[(i+1)*partSize:] {
+				part = append(part, value)
+			}
+		}
+		go func() {
+			for _, tx := range part {
+				for _, c := range person.Cards {
+					if tx.Card == c {
+						mu.Lock()
+						result[tx.Mcc] += tx.Amount
+						mu.Unlock()
+						break
+					}
+				}
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 	return result
 }

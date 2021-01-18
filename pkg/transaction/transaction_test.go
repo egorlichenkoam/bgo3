@@ -301,3 +301,43 @@ func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
 		})
 	}
 }
+
+func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
+	testData()
+
+	type fields struct {
+		Transactions []*Transaction
+	}
+	type args struct {
+		transactions []*Transaction
+		person       *person.Person
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   map[Mcc]money.Money
+	}{
+		{
+			name: "TestService_SumByPersonAndMccsWithMutexStraightToMap",
+			fields: fields{
+				Transactions: GTransactions,
+			},
+			args: args{
+				transactions: GTransactions,
+				person:       GPers,
+			},
+			want: GStandard[GPers],
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Service{
+				Transactions: tt.fields.Transactions,
+			}
+			if got := s.SumByPersonAndMccsWithMutexStraightToMap(tt.args.transactions, tt.args.person); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SumByPersonAndMccsWithMutexStraightToMap() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
