@@ -46,7 +46,7 @@ func testData() {
 		}
 
 		transactionSvc := NewService()
-		transactions := make([]*Transaction, 30000000)
+		transactions := make([]*Transaction, 1000000)
 		standard := map[*person.Person]map[Mcc]money.Money{}
 
 		mccs := make([]Mcc, 0)
@@ -222,6 +222,22 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 	}
 }
 
+func BenchmarkSumByPersonAndMccs(b *testing.B) {
+	testData()
+
+	s := NewService()
+	want := GStandard[GPers]
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := s.SumByPersonAndMccs(GTransactions, GPers)
+		b.StopTimer()
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+		b.StartTimer()
+	}
+}
+
 func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
 	testData()
 
@@ -259,6 +275,22 @@ func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
 				t.Errorf("SumByPersonAndMccWithMutex() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkSumByPersonAndMccsWithMutex(b *testing.B) {
+	testData()
+
+	s := NewService()
+	want := GStandard[GPers]
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := s.SumByPersonAndMccsWithMutex(GTransactions, GPers)
+		b.StopTimer()
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+		b.StartTimer()
 	}
 }
 
@@ -302,6 +334,22 @@ func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
 	}
 }
 
+func BenchmarkSumByPersonAndMccsWithChannels(b *testing.B) {
+	testData()
+
+	s := NewService()
+	want := GStandard[GPers]
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := s.SumByPersonAndMccsWithChannels(GTransactions, GPers)
+		b.StopTimer()
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+		b.StartTimer()
+	}
+}
+
 func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
 	testData()
 
@@ -339,5 +387,21 @@ func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
 				t.Errorf("SumByPersonAndMccsWithMutexStraightToMap() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkSumByPersonAndMccsWithMutexStraightToMap(b *testing.B) {
+	testData()
+
+	s := NewService()
+	want := GStandard[GPers]
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := s.SumByPersonAndMccsWithMutexStraightToMap(GTransactions, GPers)
+		b.StopTimer()
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+		b.StartTimer()
 	}
 }
