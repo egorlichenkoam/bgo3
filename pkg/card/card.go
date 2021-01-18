@@ -22,18 +22,20 @@ type Card struct {
 	Icon     string
 }
 
-func (s *Service) NewCard(issuer string, balance money.Money, currency Currency, number string) *Card {
-	return s.Add(Card{Id: rand.Int63(), Issuer: issuer, Balance: balance, Currency: currency, Number: number, Icon: ""})
+func (s *Service) Create(balance money.Money, currency Currency, number string) *Card {
+	return s.Add(Card{Id: rand.Int63(), Issuer: s.Issuer, Balance: balance, Currency: currency, Number: number, Icon: ""})
 }
 
 type Service struct {
 	IssuerId string
+	Issuer   string
 	Cards    []Card
 }
 
-func NewService(issuerId string) *Service {
+func NewService(issuerId, issuer string) *Service {
 	return &Service{
 		IssuerId: issuerId,
+		Issuer:   issuer,
 	}
 }
 
@@ -51,7 +53,7 @@ func (s *Service) ByNumber(number string) (card *Card) {
 			}
 		}
 		if card == nil {
-			card = s.NewCard("", 0, Rub, number)
+			card = s.Create(0, Rub, number)
 		}
 	}
 	return

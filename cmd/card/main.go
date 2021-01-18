@@ -5,12 +5,11 @@ import (
 	"01/pkg/transaction"
 	"01/pkg/transfer"
 	"fmt"
-	"sort"
 	"time"
 )
 
 func main() {
-	cardSvc := card.NewService("510621")
+	cardSvc := card.NewService("510621", "BANK")
 	transactionSvc := transaction.NewService()
 	commissions := transfer.Commission{
 		PercentInBank:       0,
@@ -22,9 +21,9 @@ func main() {
 	}
 	transferSvc := transfer.NewService(cardSvc, transactionSvc, commissions)
 
-	cardSvc.NewCard("BANK", 10_000_00, card.Rub, "5106212879499054")
-	cardSvc.NewCard("BANK", 20_000_00, card.Rub, "5106212548197220")
-	cardSvc.NewCard("BANK", 30_000_00, card.Rub, "5106211562724463")
+	cardSvc.Create(10_000_00, card.Rub, "5106212879499054")
+	cardSvc.Create(20_000_00, card.Rub, "5106212548197220")
+	cardSvc.Create(30_000_00, card.Rub, "5106211562724463")
 
 	printCards(cardSvc.Cards)
 	printTransactions(transactionSvc.Transactions)
@@ -50,7 +49,7 @@ func printCards(cards []card.Card) {
 	fmt.Println("")
 }
 
-func printTransactions(txs []transaction.Transaction) {
+func printTransactions(txs []*transaction.Transaction) {
 	for _, tx := range txs {
 		fmt.Println(tx, tx.Card.Number)
 	}
@@ -58,9 +57,9 @@ func printTransactions(txs []transaction.Transaction) {
 }
 
 func sumConcurrently() {
-	cardSvc := card.NewService("510621")
+	cardSvc := card.NewService("510621", "BABANK")
 	transactionSvc := transaction.NewService()
-	card00 := cardSvc.NewCard("BABANK", 1000_000_00, card.Rub, "5106212879499054")
+	card00 := cardSvc.Create(1000_000_00, card.Rub, "5106212879499054")
 
 	tx := transactionSvc.CreateTransaction(1_000_00, "", card00, transaction.From)
 	tx.Datetime = time.Date(2020, 12, 1, 0, 0, 0, 0, time.Local).Unix()
@@ -94,13 +93,13 @@ func sumConcurrently() {
 	result := transactionSvc.SumConcurrentlyByCardAndYearMonth(card00, time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local).Unix(), time.Date(2020, 12, 1, 0, 0, 0, 0, time.Local).Unix(), transaction.From)
 
 	fmt.Println("------------------------------------------------------------------ ")
-	keys := make([]string, 0)
+	keys := make([]time.Time, 0)
 	result.Range(func(key, value interface{}) bool {
-		k, _ := key.(string)
+		k, _ := key.(time.Time)
 		keys = append(keys, k)
 		return true
 	})
-	sort.Strings(keys)
+	//sort.TStrings(keys)
 	for _, key := range keys {
 		value, _ := result.Load(key)
 		fmt.Println(key, " - ", value)

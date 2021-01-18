@@ -3,9 +3,9 @@ package transaction
 import (
 	"01/pkg/card"
 	"01/pkg/money"
+	"01/pkg/person"
 	"math/rand"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -36,7 +36,7 @@ type Transaction struct {
 }
 
 type Service struct {
-	Transactions []Transaction
+	Transactions []*Transaction
 }
 
 func NewService() *Service {
@@ -53,21 +53,21 @@ func (s *Service) CreateTransaction(amount money.Money, mcc Mcc, card *card.Card
 		Card:     card,
 		Type:     fromTo,
 	}
-	s.Transactions = append(s.Transactions, tx)
+	s.Transactions = append(s.Transactions, &tx)
 	return s.ById(tx.Id)
 }
 
 func (s *Service) ById(id int64) *Transaction {
 	for i, tx := range s.Transactions {
 		if tx.Id == id {
-			return &s.Transactions[i]
+			return s.Transactions[i]
 		}
 	}
 	return nil
 }
 
-func (s *Service) ByCard(card *card.Card) []Transaction {
-	result := make([]Transaction, 0)
+func (s *Service) ByCard(card *card.Card) []*Transaction {
+	result := make([]*Transaction, 0)
 	for _, transaction := range s.Transactions {
 		if transaction.Card.Id == card.Id {
 			result = append(result, transaction)
@@ -76,7 +76,7 @@ func (s *Service) ByCard(card *card.Card) []Transaction {
 	return result
 }
 
-func (s *Service) LastNTransactions(card *card.Card, n int) []Transaction {
+func (s *Service) LastNTransactions(card *card.Card, n int) []*Transaction {
 	transactions := s.ByCard(card)
 	if len(transactions) < n {
 		n = len(transactions)
@@ -99,8 +99,8 @@ func (s *Service) SumByMcc(card *card.Card, mccs []Mcc) money.Money {
 	return result
 }
 
-func filterTransactionsByMcc(transactions []Transaction, mccs []Mcc) []Transaction {
-	result := make([]Transaction, 0)
+func filterTransactionsByMcc(transactions []*Transaction, mccs []Mcc) []*Transaction {
+	result := make([]*Transaction, 0)
 	for _, transaction := range transactions {
 		for _, mcc := range mccs {
 			if transaction.Mcc == mcc {
@@ -120,8 +120,8 @@ func (s *Service) TranslateMcc(code Mcc) string {
 	return result
 }
 
-func (s *Service) ByCardAndType(card *card.Card, fromTo Type) []Transaction {
-	result := make([]Transaction, 0)
+func (s *Service) ByCardAndType(card *card.Card, fromTo Type) []*Transaction {
+	result := make([]*Transaction, 0)
 	cardTransactions := s.ByCard(card)
 	//транзакции по типу (списание/зачисление)
 	for n := range cardTransactions {
@@ -133,7 +133,7 @@ func (s *Service) ByCardAndType(card *card.Card, fromTo Type) []Transaction {
 	return result
 }
 
-func (s *Service) SortByCardAndType(card *card.Card, fromTo Type) []Transaction {
+func (s *Service) SortByCardAndType(card *card.Card, fromTo Type) []*Transaction {
 	result := s.ByCardAndType(card, fromTo)
 	sort.SliceStable(result, func(i, j int) bool {
 		return result[i].Amount > result[j].Amount
@@ -141,25 +141,20 @@ func (s *Service) SortByCardAndType(card *card.Card, fromTo Type) []Transaction 
 	return result
 }
 
-func makeYearMonthKey(unixTime int64) string {
+func makeYearMonthKey(unixTime int64) time.Time {
 	t := time.Unix(unixTime, 0)
-	startYear := strconv.Itoa(t.Year())
-	startMonth := strconv.Itoa(int(t.Month()))
-	if len(startMonth) == 1 {
-		startMonth = "0" + startMonth
-	}
-	return startYear + "_" + startMonth
+	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.Local)
 }
 
-func (s *Service) GroupByCardAndYearMonth(card *card.Card, startTime, endTime int64, fromTo Type) map[string][]Transaction {
+func (s *Service) GroupByCardAndYearMonth(card *card.Card, startTime, endTime int64, fromTo Type) map[time.Time][]*Transaction {
 	if startTime < endTime {
-		groupedTransactions := make(map[string][]Transaction, 0)
+		groupedTransactions := make(map[time.Time][]*Transaction, 0)
 		next := time.Unix(startTime, 0)
 		for next.Before(time.Unix(endTime, 0)) {
-			groupedTransactions[makeYearMonthKey(next.Unix())] = make([]Transaction, 0)
+			groupedTransactions[makeYearMonthKey(next.Unix())] = make([]*Transaction, 0)
 			next = next.AddDate(0, 1, 0)
 		}
-		groupedTransactions[makeYearMonthKey(endTime)] = make([]Transaction, 0)
+		groupedTransactions[makeYearMonthKey(endTime)] = make([]*Transaction, 0)
 		transactions := s.ByCardAndType(card, fromTo)
 		for n := range transactions {
 			tx := transactions[n]
@@ -180,7 +175,7 @@ func (s *Service) SumConcurrentlyByCardAndYearMonth(card *card.Card, startTime, 
 	wg := sync.WaitGroup{}
 	wg.Add(count)
 	for key, value := range groupedTransactions {
-		go func(mark string, transactions []Transaction) {
+		go func(mark time.Time, transactions []*Transaction) {
 			sum := money.Money(0)
 			for i := range transactions {
 				sum += transactions[i].Amount
@@ -188,6 +183,46 @@ func (s *Service) SumConcurrentlyByCardAndYearMonth(card *card.Card, startTime, 
 			result.Store(mark, sum)
 			wg.Done()
 		}(key, value)
+	}
+	wg.Wait()
+	return result
+}
+
+func (s *Service) SumByPersonAndMccs(transactions []*Transaction, person *person.Person) (result map[Mcc]money.Money) {
+	result = make(map[Mcc]money.Money)
+	for _, tx := range transactions {
+		for _, c := range person.Cards {
+			if tx.Card == c {
+				result[tx.Mcc] += tx.Amount
+			}
+		}
+	}
+	return result
+}
+
+func (s *Service) SumByPersonAndMccWithMutex(transactions []*Transaction, person *person.Person) map[Mcc]money.Money {
+	partCount := 10
+	wg := sync.WaitGroup{}
+	wg.Add(partCount)
+	mu := sync.Mutex{}
+	result := make(map[Mcc]money.Money)
+	partSize := len(transactions) / partCount
+	for i := 0; i < partCount; i++ {
+		part := transactions[i*partSize : (i+1)*partSize]
+		if i == partCount-1 {
+			for _, value := range transactions[(i+1)*partSize:] {
+				part = append(part, value)
+			}
+		}
+		go func() {
+			m := s.SumByPersonAndMccs(part, person)
+			mu.Lock()
+			for key, value := range m {
+				result[key] += value
+			}
+			mu.Unlock()
+			wg.Done()
+		}()
 	}
 	wg.Wait()
 	return result
