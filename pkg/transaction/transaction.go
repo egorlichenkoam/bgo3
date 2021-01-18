@@ -54,7 +54,7 @@ func (s *Service) CreateTransaction(amount money.Money, mcc Mcc, card *card.Card
 		Type:     fromTo,
 	}
 	s.Transactions = append(s.Transactions, &tx)
-	return s.ById(tx.Id)
+	return &tx
 }
 
 func (s *Service) ById(id int64) *Transaction {
@@ -225,5 +225,34 @@ func (s *Service) SumByPersonAndMccsWithMutex(transactions []*Transaction, perso
 		}()
 	}
 	wg.Wait()
+	return result
+}
+
+func (s *Service) SumByPersonAndMccsWithChannels(transactions []*Transaction, person *person.Person) map[Mcc]money.Money {
+	partCount := 10
+	result := make(map[Mcc]money.Money)
+	chMap := make(chan map[Mcc]money.Money)
+	partSize := len(transactions) / partCount
+	for i := 0; i < partCount; i++ {
+		part := transactions[i*partSize : (i+1)*partSize]
+		if i == partCount-1 {
+			for _, value := range transactions[(i+1)*partSize:] {
+				part = append(part, value)
+			}
+		}
+		go func(chMap chan<- map[Mcc]money.Money) {
+			chMap <- s.SumByPersonAndMccs(part, person)
+		}(chMap)
+	}
+	finished := 0
+	for value := range chMap {
+		for key, value := range value {
+			result[key] += value
+		}
+		finished++
+		if finished == partCount {
+			break
+		}
+	}
 	return result
 }

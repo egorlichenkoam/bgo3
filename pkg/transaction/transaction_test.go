@@ -9,71 +9,81 @@ import (
 	"testing"
 )
 
-func testData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money, *person.Person) {
-	personSvc := person.NewService()
-	personSvc.Create("Иванов Иван Иванович")
-	personSvc.Create("Петров Перт Петрович")
-	personSvc.Create("Александров Александр Александрович")
-	personsCount := len(personSvc.Persons)
+var GTransactions []*Transaction = nil
+var GStandard map[*person.Person]map[Mcc]money.Money = nil
+var GPers *person.Person = nil
 
-	cardsNumbers := []string{
-		"5106218416444735",
-		"5106213218822113",
-		"5106212866596714",
-		"5106217691072252",
-		"5106212352395522",
-		"5106213096028379",
-		"5106212135434895",
-		"5106216399162894",
-		"5106215378054189",
-		"5106212023035804",
-		"5106212615962522",
-		"5106215392336513",
-		"5106216651506119",
-		"5106219357347762",
-		"5106211376685587",
-		"5106217418637700",
-		"5106213096531406"}
-	cardSvc := card.NewService("510621", "BABABANK")
-	for _, number := range cardsNumbers {
-		c := cardSvc.Create(10_000_000_00, card.Rub, number)
-		personSvc.AddCard(personSvc.Persons[rand.Intn(personsCount)], c)
-	}
+func testData() {
+	if (GTransactions == nil) || (GStandard == nil) || (GPers == nil) {
+		personSvc := person.NewService()
+		personSvc.Create("Иванов Иван Иванович")
+		personSvc.Create("Петров Перт Петрович")
+		personSvc.Create("Александров Александр Александрович")
+		personsCount := len(personSvc.Persons)
 
-	transactionSvc := NewService()
-	transactions := make([]*Transaction, 100000)
-	standard := map[*person.Person]map[Mcc]money.Money{}
-
-	mccs := make([]Mcc, 0)
-	for key := range Mccs() {
-		mccs = append(mccs, key)
-	}
-
-	for i := range transactions {
-		pers := personSvc.Persons[rand.Intn(personsCount)]
-		cardIdx := rand.Intn(len(pers.Cards))
-		standardMap := standard[pers]
-		if standardMap == nil {
-			standardMap = map[Mcc]money.Money{}
+		cardsNumbers := []string{
+			"5106218416444735",
+			"5106213218822113",
+			"5106212866596714",
+			"5106217691072252",
+			"5106212352395522",
+			"5106213096028379",
+			"5106212135434895",
+			"5106216399162894",
+			"5106215378054189",
+			"5106212023035804",
+			"5106212615962522",
+			"5106215392336513",
+			"5106216651506119",
+			"5106219357347762",
+			"5106211376685587",
+			"5106217418637700",
+			"5106213096531406"}
+		cardSvc := card.NewService("510621", "BABABANK")
+		for _, number := range cardsNumbers {
+			c := cardSvc.Create(10_000_000_00, card.Rub, number)
+			personSvc.AddCard(personSvc.Persons[rand.Intn(personsCount)], c)
 		}
-		mccIdx := rand.Intn(len(mccs))
-		tx := transactionSvc.CreateTransaction(100_00, mccs[mccIdx], pers.Cards[cardIdx], From)
-		transactions[i] = tx
-		standardMap[tx.Mcc] += tx.Amount
-		standard[pers] = standardMap
-	}
 
-	standardKeys := make([]*person.Person, 0)
-	for key := range standard {
-		standardKeys = append(standardKeys, key)
-	}
-	keyIdx := rand.Intn(len(standardKeys))
-	pers := standardKeys[keyIdx]
+		transactionSvc := NewService()
+		transactions := make([]*Transaction, 30000000)
+		standard := map[*person.Person]map[Mcc]money.Money{}
 
-	return transactions, standard, pers
+		mccs := make([]Mcc, 0)
+		for key := range Mccs() {
+			mccs = append(mccs, key)
+		}
+
+		for i := range transactions {
+			pers := personSvc.Persons[rand.Intn(personsCount)]
+			cardIdx := rand.Intn(len(pers.Cards))
+			standardMap := standard[pers]
+			if standardMap == nil {
+				standardMap = map[Mcc]money.Money{}
+			}
+			mccIdx := rand.Intn(len(mccs))
+			tx := transactionSvc.CreateTransaction(100_00, mccs[mccIdx], pers.Cards[cardIdx], From)
+			transactions[i] = tx
+			standardMap[tx.Mcc] += tx.Amount
+			standard[pers] = standardMap
+		}
+
+		standardKeys := make([]*person.Person, 0)
+		for key := range standard {
+			standardKeys = append(standardKeys, key)
+		}
+		keyIdx := rand.Intn(len(standardKeys))
+		pers := standardKeys[keyIdx]
+
+		GTransactions = transactions
+		GStandard = standard
+		GPers = pers
+	}
 }
 
 func TestService_SortedByType(t *testing.T) {
+	testData()
+
 	cardSvc := card.NewService("510621", "BABANK")
 	transactionSvc := NewService()
 	personSvc := person.NewService()
@@ -173,7 +183,7 @@ func areTransactionsEquals(got []*Transaction, want []Transaction) bool {
 }
 
 func TestService_SumByPersonAndMccs(t *testing.T) {
-	transactions, standard, pers := testData()
+	testData()
 
 	type fields struct {
 		Transactions []*Transaction
@@ -189,15 +199,15 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 		want   map[Mcc]money.Money
 	}{
 		{
-			name: "Вывод группированных по MCC затрат",
+			name: "TestService_SumByPersonAndMccs",
 			fields: fields{
-				Transactions: transactions,
+				Transactions: GTransactions,
 			},
 			args: args{
-				transactions: transactions,
-				person:       pers,
+				transactions: GTransactions,
+				person:       GPers,
 			},
-			want: standard[pers],
+			want: GStandard[GPers],
 		},
 	}
 	for _, tt := range tests {
@@ -213,7 +223,7 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 }
 
 func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
-	transactions, standard, pers := testData()
+	testData()
 
 	type fields struct {
 		Transactions []*Transaction
@@ -229,15 +239,15 @@ func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
 		want   map[Mcc]money.Money
 	}{
 		{
-			name: "Вывод группированных по MCC затрат с mutex",
+			name: "TestService_SumByPersonAndMccsWithMutex",
 			fields: fields{
-				Transactions: transactions,
+				Transactions: GTransactions,
 			},
 			args: args{
-				transactions: transactions,
-				person:       pers,
+				transactions: GTransactions,
+				person:       GPers,
 			},
-			want: standard[pers],
+			want: GStandard[GPers],
 		},
 	}
 	for _, tt := range tests {
@@ -247,6 +257,46 @@ func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
 			}
 			if got := s.SumByPersonAndMccsWithMutex(tt.args.transactions, tt.args.person); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("SumByPersonAndMccWithMutex() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
+	testData()
+
+	type fields struct {
+		Transactions []*Transaction
+	}
+	type args struct {
+		transactions []*Transaction
+		person       *person.Person
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   map[Mcc]money.Money
+	}{
+		{
+			name: "TestService_SumByPersonAndMccsWithChannels",
+			fields: fields{
+				Transactions: GTransactions,
+			},
+			args: args{
+				transactions: GTransactions,
+				person:       GPers,
+			},
+			want: GStandard[GPers],
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Service{
+				Transactions: tt.fields.Transactions,
+			}
+			if got := s.SumByPersonAndMccsWithChannels(tt.args.transactions, tt.args.person); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SumByPersonAndMccsWithChannels() = %v, want %v", got, tt.want)
 			}
 		})
 	}
