@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func testData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money) {
+func testData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money, *person.Person) {
 	personSvc := person.NewService()
 	personSvc.Create("Иванов Иван Иванович")
 	personSvc.Create("Петров Перт Петрович")
@@ -62,7 +62,15 @@ func testData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money) {
 		standardMap[tx.Mcc] += tx.Amount
 		standard[pers] = standardMap
 	}
-	return transactions, standard
+
+	standardKeys := make([]*person.Person, 0)
+	for key := range standard {
+		standardKeys = append(standardKeys, key)
+	}
+	keyIdx := rand.Intn(len(standardKeys))
+	pers := standardKeys[keyIdx]
+
+	return transactions, standard, pers
 }
 
 func TestService_SortedByType(t *testing.T) {
@@ -165,6 +173,8 @@ func areTransactionsEquals(got []*Transaction, want []Transaction) bool {
 }
 
 func TestService_SumByPersonAndMccs(t *testing.T) {
+	transactions, standard, pers := testData()
+
 	type fields struct {
 		Transactions []*Transaction
 	}
@@ -172,20 +182,11 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 		transactions []*Transaction
 		person       *person.Person
 	}
-
-	transactions, standard := testData()
-	standardKeys := make([]*person.Person, 0)
-	for key := range standard {
-		standardKeys = append(standardKeys, key)
-	}
-	keyIdx := rand.Intn(len(standardKeys))
-	pers := standardKeys[keyIdx]
-
 	tests := []struct {
-		name       string
-		fields     fields
-		args       args
-		wantResult map[Mcc]money.Money
+		name   string
+		fields fields
+		args   args
+		want   map[Mcc]money.Money
 	}{
 		{
 			name: "Вывод группированных по MCC затрат",
@@ -196,7 +197,7 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 				transactions: transactions,
 				person:       pers,
 			},
-			wantResult: standard[pers],
+			want: standard[pers],
 		},
 	}
 	for _, tt := range tests {
@@ -204,8 +205,48 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 			s := &Service{
 				Transactions: tt.fields.Transactions,
 			}
-			if gotResult := s.SumByPersonAndMccs(tt.args.transactions, tt.args.person); !reflect.DeepEqual(gotResult, tt.wantResult) {
-				t.Errorf("SumByPersonAndMccs() = %v, want %v", gotResult, tt.wantResult)
+			if gotResult := s.SumByPersonAndMccs(tt.args.transactions, tt.args.person); !reflect.DeepEqual(gotResult, tt.want) {
+				t.Errorf("SumByPersonAndMccs() = %v, want %v", gotResult, tt.want)
+			}
+		})
+	}
+}
+
+func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
+	transactions, standard, pers := testData()
+
+	type fields struct {
+		Transactions []*Transaction
+	}
+	type args struct {
+		transactions []*Transaction
+		person       *person.Person
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   map[Mcc]money.Money
+	}{
+		{
+			name: "Вывод группированных по MCC затрат с mutex",
+			fields: fields{
+				Transactions: transactions,
+			},
+			args: args{
+				transactions: transactions,
+				person:       pers,
+			},
+			want: standard[pers],
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Service{
+				Transactions: tt.fields.Transactions,
+			}
+			if got := s.SumByPersonAndMccsWithMutex(tt.args.transactions, tt.args.person); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SumByPersonAndMccWithMutex() = %v, want %v", got, tt.want)
 			}
 		})
 	}

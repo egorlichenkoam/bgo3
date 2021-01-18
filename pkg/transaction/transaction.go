@@ -200,7 +200,7 @@ func (s *Service) SumByPersonAndMccs(transactions []*Transaction, person *person
 	return result
 }
 
-func (s *Service) SumByPersonAndMccWithMutex(transactions []*Transaction, person *person.Person) map[Mcc]money.Money {
+func (s *Service) SumByPersonAndMccsWithMutex(transactions []*Transaction, person *person.Person) map[Mcc]money.Money {
 	partCount := 10
 	wg := sync.WaitGroup{}
 	wg.Add(partCount)
