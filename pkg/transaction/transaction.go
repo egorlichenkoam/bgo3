@@ -4,8 +4,14 @@ import (
 	"01/pkg/card"
 	"01/pkg/money"
 	"01/pkg/person"
+	"bytes"
+	"encoding/csv"
+	"io"
+	"io/ioutil"
 	"math/rand"
+	"os"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -31,7 +37,7 @@ type Transaction struct {
 	Datetime int64
 	Mcc      Mcc
 	Status   Status
-	Card     *card.Card
+	CardId   int64
 	Type     Type
 }
 
@@ -50,7 +56,7 @@ func (s *Service) CreateTransaction(amount money.Money, mcc Mcc, card *card.Card
 		Datetime: time.Now().Unix(),
 		Mcc:      mcc,
 		Status:   Wait,
-		Card:     card,
+		CardId:   card.Id,
 		Type:     fromTo,
 	}
 	s.Transactions = append(s.Transactions, &tx)
@@ -69,7 +75,7 @@ func (s *Service) ById(id int64) *Transaction {
 func (s *Service) ByCard(card *card.Card) []*Transaction {
 	result := make([]*Transaction, 0)
 	for _, transaction := range s.Transactions {
-		if transaction.Card.Id == card.Id {
+		if transaction.CardId == card.Id {
 			result = append(result, transaction)
 		}
 	}
@@ -192,7 +198,7 @@ func (s *Service) SumByPersonAndMccs(transactions []*Transaction, person *person
 	result = make(map[Mcc]money.Money)
 	for _, tx := range transactions {
 		for _, c := range person.Cards {
-			if tx.Card == c {
+			if tx.CardId == c.Id {
 				result[tx.Mcc] += tx.Amount
 				break
 			}
@@ -275,7 +281,7 @@ func (s *Service) SumByPersonAndMccsWithMutexStraightToMap(transactions []*Trans
 		go func() {
 			for _, tx := range part {
 				for _, c := range person.Cards {
-					if tx.Card == c {
+					if tx.CardId == c.Id {
 						mu.Lock()
 						result[tx.Mcc] += tx.Amount
 						mu.Unlock()
@@ -288,4 +294,107 @@ func (s *Service) SumByPersonAndMccsWithMutexStraightToMap(transactions []*Trans
 	}
 	wg.Wait()
 	return result
+}
+
+func (t Transaction) strings() (result []string) {
+	result = make([]string, 0)
+	result = append(result, strconv.Itoa(int(t.Id)))
+	result = append(result, strconv.Itoa(int(t.Amount)))
+	result = append(result, strconv.Itoa(int(t.Datetime)))
+	result = append(result, string(t.Mcc))
+	result = append(result, string(t.Status))
+	result = append(result, strconv.Itoa(int(t.CardId)))
+	result = append(result, strconv.Itoa(int(t.Type)))
+	return result
+}
+
+func (t *Transaction) mapRowToTransaction(content []string) (err error) {
+	for key, value := range content {
+		switch key {
+		case 0:
+			t.Id, err = strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return err
+			}
+			break
+		case 1:
+			var amount int64 = 0
+			amount, err = strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return err
+			}
+			t.Amount = money.Money(amount)
+			break
+		case 2:
+			t.Datetime, err = strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return err
+			}
+			break
+		case 3:
+			t.Mcc = Mcc(value)
+			break
+		case 4:
+			t.Status = Status(value)
+			break
+		case 5:
+			t.CardId, err = strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				return err
+			}
+			break
+		case 6:
+			var txType int
+			txType, err = strconv.Atoi(value)
+			if err != nil {
+				return err
+			}
+			t.Type = Type(txType)
+			break
+		}
+	}
+	return nil
+}
+
+func ExportCsv(transactions []*Transaction) (err error) {
+	file, err := os.Create("exports.csv")
+	if err != nil {
+		return err
+	}
+	defer func(c io.Closer) {
+		if cerr := c.Close(); cerr != nil {
+			err = cerr
+		}
+	}(file)
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+	for _, tx := range transactions {
+		err = writer.Write(tx.strings())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ImportCsv(filePath string) ([]*Transaction, error) {
+	transactions := make([]*Transaction, 0)
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	reader := csv.NewReader(bytes.NewReader(data))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	for _, content := range records {
+		tx := Transaction{}
+		err = tx.mapRowToTransaction(content)
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, &tx)
+	}
+	return transactions, nil
 }

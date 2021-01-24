@@ -51,7 +51,7 @@ func printCards(cards []card.Card) {
 
 func printTransactions(txs []*transaction.Transaction) {
 	for _, tx := range txs {
-		fmt.Println(tx, tx.Card.Number)
+		fmt.Println(tx, tx.CardId)
 	}
 	fmt.Println("")
 }
@@ -108,5 +108,5 @@ func sumConcurrently() {
 }
 
 func printVersion() {
-	fmt.Println("02.04.02")
+	fmt.Println("03.01.01")
 }
