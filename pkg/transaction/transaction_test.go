@@ -5,6 +5,7 @@ import (
 	"01/pkg/money"
 	"01/pkg/person"
 	"math/rand"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -403,5 +404,68 @@ func BenchmarkSumByPersonAndMccsWithMutexStraightToMap(b *testing.B) {
 			b.Fatalf("invalid result, got %v, want %v", result, want)
 		}
 		b.StartTimer()
+	}
+}
+
+func TestExportCsv(t *testing.T) {
+	testData()
+	type args struct {
+		transactions []*Transaction
+	}
+	tests := []struct {
+		name string
+		args args
+		want error
+	}{
+		{
+			name: "TestService_SumByPersonAndMccs",
+			args: args{
+				transactions: GTransactions,
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := ExportCsv(tt.args.transactions); err != tt.want {
+				t.Errorf("ExportCsv() error = %v, wantErr %v", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestImportCsv(t *testing.T) {
+	testData()
+	fPath, _ := os.Getwd()
+	fPath = fPath + "/exports.csv"
+	type args struct {
+		filePath string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*Transaction
+		wantErr error
+	}{
+		{
+			name: "TestService_SumByPersonAndMccs",
+			args: args{
+				filePath: fPath,
+			},
+			want:    GTransactions,
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ImportCsv(tt.args.filePath)
+			if err != tt.wantErr {
+				t.Errorf("ImportCsv() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ImportCsv() got = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
