@@ -51,7 +51,7 @@ func printCards(cards []card.Card) {
 
 func printTransactions(txs []*transaction.Transaction) {
 	for _, tx := range txs {
-		fmt.Println(tx, tx.Card.Number)
+		fmt.Println(tx, tx.CardId)
 	}
 	fmt.Println("")
 }

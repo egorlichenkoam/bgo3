@@ -102,32 +102,32 @@ func TestService_SortedByType(t *testing.T) {
 	transactions := []Transaction{
 		{
 			Amount: 50_000_00,
-			Card:   card00,
+			CardId: card00.Id,
 			Type:   From,
 		},
 		{
 			Amount: 49_000_00,
-			Card:   card00,
+			CardId: card00.Id,
 			Type:   From,
 		},
 		{
 			Amount: 6_000_00,
-			Card:   card00,
+			CardId: card00.Id,
 			Type:   From,
 		},
 		{
 			Amount: 5_000_00,
-			Card:   card00,
+			CardId: card00.Id,
 			Type:   From,
 		},
 		{
 			Amount: 1_000_00,
-			Card:   card00,
+			CardId: card00.Id,
 			Type:   From,
 		},
 		{
 			Amount: 500_00,
-			Card:   card00,
+			CardId: card00.Id,
 			Type:   From,
 		},
 	}
@@ -175,7 +175,7 @@ func areTransactionsEquals(got []*Transaction, want []Transaction) bool {
 	for n := range want {
 		gotTx := got[n]
 		wantTx := want[n]
-		if (gotTx.Card.Number != wantTx.Card.Number) && (gotTx.Amount != wantTx.Amount) {
+		if (gotTx.CardId != wantTx.CardId) && (gotTx.Amount != wantTx.Amount) {
 			return false
 		}
 	}
