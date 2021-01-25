@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"encoding/json"
+	"encoding/xml"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -33,7 +34,6 @@ const (
 )
 
 type Transaction struct {
-	XMLName  string      `xml:"transaction"`
 	Id       int64       `json:"id" xml:"id"`
 	Amount   money.Money `json:"amount" xml:"amount"`
 	Datetime int64       `json:"datetime" xml:"datetime"`
@@ -44,8 +44,8 @@ type Transaction struct {
 }
 
 type Transactions struct {
-	XMLName      string `xml:"transactions"`
-	Transactions []*Transaction
+	XMLName      string         `xml:"transactions"`
+	Transactions []*Transaction `xml:"transaction"`
 }
 
 type Service struct {
@@ -439,5 +439,49 @@ func ImportJson(filePath string) (transactions []*Transaction, err error) {
 	if err != nil {
 		return nil, err
 	}
+	return transactions, nil
+}
+
+func ExportXml(transactions []*Transaction) (err error) {
+	file, err := os.Create("exports.xml")
+	if err != nil {
+		return err
+	}
+	defer func(c io.Closer) {
+		if cerr := c.Close(); cerr != nil {
+			err = cerr
+		}
+	}(file)
+	file.WriteString(xml.Header)
+	encoder := xml.NewEncoder(file)
+	internalTransactions := Transactions{
+		Transactions: transactions,
+	}
+	xml.Marshal(internalTransactions)
+	err = encoder.Encode(&internalTransactions)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// импортирует транзакции из xml файла
+func ImportXml(filePath string) (transactions []*Transaction, err error) {
+	transactions = make([]*Transaction, 0)
+	reader, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer func(c io.Closer) {
+		if cerr := c.Close(); cerr != nil {
+			err = cerr
+		}
+	}(reader)
+	internalTransactions := Transactions{}
+	err = xml.NewDecoder(reader).Decode(&internalTransactions)
+	if err != nil {
+		return nil, err
+	}
+	transactions = internalTransactions.Transactions
 	return transactions, nil
 }

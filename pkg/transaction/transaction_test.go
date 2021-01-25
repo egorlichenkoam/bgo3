@@ -47,7 +47,7 @@ func CreateTestData() {
 		}
 
 		transactionSvc := NewService()
-		transactions := make([]*Transaction, 1000000)
+		transactions := make([]*Transaction, 1000)
 		standard := map[*person.Person]map[Mcc]money.Money{}
 
 		mccs := make([]Mcc, 0)
@@ -527,6 +527,68 @@ func TestImportJson(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ImportJson() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExportXml(t *testing.T) {
+	CreateTestData()
+	type args struct {
+		transactions []*Transaction
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr error
+	}{
+		{
+			name: "TestExportXml",
+			args: args{
+				transactions: GTransactions,
+			},
+			wantErr: nil,
+		}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := ExportXml(tt.args.transactions); err != tt.wantErr {
+				t.Errorf("ExportXml() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestImportXml(t *testing.T) {
+	CreateTestData()
+	fPath, _ := os.Getwd()
+	fPath = fPath + "/exports.xml"
+	type args struct {
+		filePath string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*Transaction
+		wantErr error
+	}{
+		{
+			name: "TestImportXml",
+			args: args{
+				filePath: fPath,
+			},
+			want:    GTransactions,
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ImportXml(tt.args.filePath)
+			if err != tt.wantErr {
+				t.Errorf("ImportXml() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ImportXml() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

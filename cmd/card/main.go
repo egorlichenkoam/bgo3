@@ -148,10 +148,19 @@ func exportImport() {
 	path, _ := os.Getwd()
 	path = path + "/exports.json"
 	txs, _ := transaction.ImportJson(path)
+	log.Println("JSON")
 	for _, tx := range txs {
 		log.Println(tx)
 	}
 
+	transaction.ExportXml(transactionSvc.Transactions)
+	path, _ = os.Getwd()
+	path = path + "/exports.xml"
+	txs, _ = transaction.ImportXml(path)
+	log.Println("XML")
+	for _, tx := range txs {
+		log.Println(tx)
+	}
 }
 
 func printVersion() {
