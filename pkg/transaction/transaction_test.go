@@ -14,7 +14,7 @@ var GTransactions []*Transaction = nil
 var GStandard map[*person.Person]map[Mcc]money.Money = nil
 var GPers *person.Person = nil
 
-func testData() {
+func CreateTestData() {
 	if (GTransactions == nil) || (GStandard == nil) || (GPers == nil) {
 		personSvc := person.NewService()
 		personSvc.Create("Иванов Иван Иванович")
@@ -83,7 +83,7 @@ func testData() {
 }
 
 func TestService_SortedByType(t *testing.T) {
-	testData()
+	CreateTestData()
 
 	cardSvc := card.NewService("510621", "BABANK")
 	transactionSvc := NewService()
@@ -184,7 +184,7 @@ func areTransactionsEquals(got []*Transaction, want []Transaction) bool {
 }
 
 func TestService_SumByPersonAndMccs(t *testing.T) {
-	testData()
+	CreateTestData()
 
 	type fields struct {
 		Transactions []*Transaction
@@ -224,7 +224,7 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 }
 
 func BenchmarkSumByPersonAndMccs(b *testing.B) {
-	testData()
+	CreateTestData()
 
 	s := NewService()
 	want := GStandard[GPers]
@@ -240,7 +240,7 @@ func BenchmarkSumByPersonAndMccs(b *testing.B) {
 }
 
 func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
-	testData()
+	CreateTestData()
 
 	type fields struct {
 		Transactions []*Transaction
@@ -280,7 +280,7 @@ func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
 }
 
 func BenchmarkSumByPersonAndMccsWithMutex(b *testing.B) {
-	testData()
+	CreateTestData()
 
 	s := NewService()
 	want := GStandard[GPers]
@@ -296,7 +296,7 @@ func BenchmarkSumByPersonAndMccsWithMutex(b *testing.B) {
 }
 
 func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
-	testData()
+	CreateTestData()
 
 	type fields struct {
 		Transactions []*Transaction
@@ -336,7 +336,7 @@ func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
 }
 
 func BenchmarkSumByPersonAndMccsWithChannels(b *testing.B) {
-	testData()
+	CreateTestData()
 
 	s := NewService()
 	want := GStandard[GPers]
@@ -352,7 +352,7 @@ func BenchmarkSumByPersonAndMccsWithChannels(b *testing.B) {
 }
 
 func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
-	testData()
+	CreateTestData()
 
 	type fields struct {
 		Transactions []*Transaction
@@ -392,7 +392,7 @@ func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
 }
 
 func BenchmarkSumByPersonAndMccsWithMutexStraightToMap(b *testing.B) {
-	testData()
+	CreateTestData()
 
 	s := NewService()
 	want := GStandard[GPers]
@@ -408,7 +408,7 @@ func BenchmarkSumByPersonAndMccsWithMutexStraightToMap(b *testing.B) {
 }
 
 func TestExportCsv(t *testing.T) {
-	testData()
+	CreateTestData()
 	type args struct {
 		transactions []*Transaction
 	}
@@ -418,7 +418,7 @@ func TestExportCsv(t *testing.T) {
 		want error
 	}{
 		{
-			name: "TestService_SumByPersonAndMccs",
+			name: "TestExportCsv",
 			args: args{
 				transactions: GTransactions,
 			},
@@ -435,7 +435,7 @@ func TestExportCsv(t *testing.T) {
 }
 
 func TestImportCsv(t *testing.T) {
-	testData()
+	CreateTestData()
 	fPath, _ := os.Getwd()
 	fPath = fPath + "/exports.csv"
 	type args struct {
@@ -448,7 +448,7 @@ func TestImportCsv(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "TestService_SumByPersonAndMccs",
+			name: "TestImportCsv",
 			args: args{
 				filePath: fPath,
 			},
@@ -465,6 +465,68 @@ func TestImportCsv(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ImportCsv() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExportJson(t *testing.T) {
+	CreateTestData()
+	type args struct {
+		transactions []*Transaction
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr error
+	}{
+		{
+			name: "TestExportJson",
+			args: args{
+				transactions: GTransactions,
+			},
+			wantErr: nil,
+		}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := ExportJson(tt.args.transactions); err != tt.wantErr {
+				t.Errorf("ExportJson() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestImportJson(t *testing.T) {
+	CreateTestData()
+	fPath, _ := os.Getwd()
+	fPath = fPath + "/exports.json"
+	type args struct {
+		filePath string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []*Transaction
+		wantErr error
+	}{
+		{
+			name: "TestImportJson",
+			args: args{
+				filePath: fPath,
+			},
+			want:    GTransactions,
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ImportJson(tt.args.filePath)
+			if err != tt.wantErr {
+				t.Errorf("ImportJson() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ImportJson() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

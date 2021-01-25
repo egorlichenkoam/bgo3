@@ -5,6 +5,8 @@ import (
 	"01/pkg/transaction"
 	"01/pkg/transfer"
 	"fmt"
+	"log"
+	"os"
 	"time"
 )
 
@@ -38,6 +40,8 @@ func main() {
 	printTransactions(transactionSvc.Transactions)
 
 	sumConcurrently()
+
+	exportImport()
 
 	printVersion()
 }
@@ -99,12 +103,55 @@ func sumConcurrently() {
 		keys = append(keys, k)
 		return true
 	})
-	//sort.TStrings(keys)
 	for _, key := range keys {
 		value, _ := result.Load(key)
 		fmt.Println(key, " - ", value)
 	}
 	fmt.Println("------------------------------------------------------------------")
+}
+
+func exportImport() {
+	cardSvc := card.NewService("510621", "BABANK")
+	transactionSvc := transaction.NewService()
+	card00 := cardSvc.Create(1000_000_00, card.Rub, "5106212879499054")
+
+	tx := transactionSvc.CreateTransaction(1_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 12, 1, 0, 0, 0, 0, time.Local).Unix()
+	tx = transactionSvc.CreateTransaction(12_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 12, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(10_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 11, 1, 0, 0, 0, 0, time.Local).Unix()
+	tx = transactionSvc.CreateTransaction(22_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 11, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(100_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 9, 1, 0, 0, 0, 0, time.Local).Unix()
+	tx = transactionSvc.CreateTransaction(200_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 9, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(800_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 6, 1, 0, 0, 0, 0, time.Local).Unix()
+	tx = transactionSvc.CreateTransaction(2_000_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 6, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(8_700_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 3, 1, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(3_000_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 4, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	tx = transactionSvc.CreateTransaction(1_000_000_00, "5812", card00, transaction.From)
+	tx.Datetime = time.Date(2020, 1, 5, 0, 0, 0, 0, time.Local).Unix()
+
+	transaction.ExportJson(transactionSvc.Transactions)
+	path, _ := os.Getwd()
+	path = path + "/exports.json"
+	txs, _ := transaction.ImportJson(path)
+	for _, tx := range txs {
+		log.Println(tx)
+	}
+
 }
 
 func printVersion() {
