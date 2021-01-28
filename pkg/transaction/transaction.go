@@ -452,7 +452,10 @@ func ExportXml(transactions []*Transaction) (err error) {
 			err = cerr
 		}
 	}(file)
-	file.WriteString(xml.Header)
+	_, err = file.WriteString(xml.Header)
+	if err != nil {
+		return err
+	}
 	encoder := xml.NewEncoder(file)
 	internalTransactions := Transactions{
 		Transactions: transactions,
