@@ -197,5 +197,5 @@ func exportImport() {
 }
 
 func printVersion() {
-	fmt.Println("03.01.02.01")
+	fmt.Println("03.01.02.02")
 }
