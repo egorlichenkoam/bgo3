@@ -144,25 +144,58 @@ func exportImport() {
 	tx = transactionSvc.CreateTransaction(1_000_000_00, "5812", card00, transaction.From)
 	tx.Datetime = time.Date(2020, 1, 5, 0, 0, 0, 0, time.Local).Unix()
 
-	transaction.ExportJson(transactionSvc.Transactions)
-	path, _ := os.Getwd()
-	path = path + "/exports.json"
-	txs, _ := transaction.ImportJson(path)
-	log.Println("JSON")
-	for _, tx := range txs {
-		log.Println(tx)
+	log.Println("CSV")
+	err := transaction.ExportCsv(transactionSvc.Transactions)
+	if err != nil {
+		log.Println(err)
+	} else {
+		path, _ := os.Getwd()
+		path = path + "/exports.csv"
+		txs, err := transaction.ImportCsv(path)
+		if err != nil {
+			log.Println(err)
+		} else {
+			for _, tx := range txs {
+				log.Println(tx)
+			}
+		}
 	}
 
-	transaction.ExportXml(transactionSvc.Transactions)
-	path, _ = os.Getwd()
-	path = path + "/exports.xml"
-	txs, _ = transaction.ImportXml(path)
+	log.Println("JSON")
+	err = transaction.ExportJson(transactionSvc.Transactions)
+	if err != nil {
+		log.Println(err)
+	} else {
+		path, _ := os.Getwd()
+		path = path + "/exports.json"
+		txs, err := transaction.ImportJson(path)
+		if err != nil {
+			log.Println(err)
+		} else {
+			for _, tx := range txs {
+				log.Println(tx)
+			}
+		}
+	}
+
 	log.Println("XML")
-	for _, tx := range txs {
-		log.Println(tx)
+	err = transaction.ExportXml(transactionSvc.Transactions)
+	if err != nil {
+		log.Println(err)
+	} else {
+		path, _ := os.Getwd()
+		path = path + "/exports.xml"
+		txs, err := transaction.ImportXml(path)
+		if err != nil {
+			log.Println(err)
+		} else {
+			for _, tx := range txs {
+				log.Println(tx)
+			}
+		}
 	}
 }
 
 func printVersion() {
-	fmt.Println("03.01.02")
+	fmt.Println("03.01.02.01")
 }
