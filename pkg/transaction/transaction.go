@@ -1,19 +1,20 @@
 package transaction
 
 import (
-	"01/pkg/card"
-	"01/pkg/money"
-	"01/pkg/person"
 	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
+	"github.com/egorlichenkoam/bgo3/pkg/card"
+	"github.com/egorlichenkoam/bgo3/pkg/money"
+	"github.com/egorlichenkoam/bgo3/pkg/person"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -315,6 +316,12 @@ func (t Transaction) strings() (result []string) {
 	return result
 }
 
+func (t Transaction) string() string {
+	result := strings.Join(t.strings(), ",")
+	result = result + "\n"
+	return result
+}
+
 func (t *Transaction) mapRowToTransaction(content []string) (err error) {
 	for key, value := range content {
 		switch key {
@@ -384,6 +391,14 @@ func ExportCsv(transactions []*Transaction) (err error) {
 	return nil
 }
 
+func ExportCsvToBytes(transactions []*Transaction) []byte {
+	var bytesTx []byte
+	for _, tx := range transactions {
+		bytesTx = append(bytesTx, tx.string()...)
+	}
+	return bytesTx
+}
+
 func ImportCsv(filePath string) ([]*Transaction, error) {
 	transactions := make([]*Transaction, 0)
 	data, err := ioutil.ReadFile(filePath)
@@ -422,6 +437,16 @@ func ExportJson(transactions []*Transaction) (err error) {
 		return err
 	}
 	return nil
+}
+
+func ExportJsonToBytes(transactions []*Transaction) []byte {
+	var bytesTx []byte
+	for _, tx := range transactions {
+		bytesJson, _ := json.Marshal(tx)
+		bytesTx = append(bytesTx, bytesJson...)
+
+	}
+	return bytesTx
 }
 
 func ImportJson(filePath string) (transactions []*Transaction, err error) {
@@ -466,6 +491,16 @@ func ExportXml(transactions []*Transaction) (err error) {
 		return err
 	}
 	return nil
+}
+
+func ExportXmlToBytes(transactions []*Transaction) []byte {
+	bytesTx := []byte(xml.Header)
+	internalTransactions := Transactions{
+		Transactions: transactions,
+	}
+	bytesXml, _ := xml.Marshal(internalTransactions)
+	bytesTx = append(bytesTx, bytesXml...)
+	return bytesTx
 }
 
 // импортирует транзакции из xml файла
