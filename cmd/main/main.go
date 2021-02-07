@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/egorlichenkoam/bgo3/pkg/card"
+	"github.com/egorlichenkoam/bgo3/pkg/dailycurrencies"
 	"github.com/egorlichenkoam/bgo3/pkg/money"
 	"github.com/egorlichenkoam/bgo3/pkg/person"
 	"github.com/egorlichenkoam/bgo3/pkg/transaction"
@@ -26,6 +27,11 @@ var GPers *person.Person = nil
 
 func main() {
 	printVersion()
+	dailyCurrenciesSvc := dailycurrencies.NewService()
+	err := dailyCurrenciesSvc.Extract()
+	if err != nil {
+		log.Fatal(err)
+	}
 	GTransactions, GStandard, GPers = transaction.GenerateTestData()
 	if err := execute(); err != nil {
 		log.Fatal(err)
