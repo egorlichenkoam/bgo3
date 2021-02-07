@@ -1,9 +1,9 @@
 package transfer
 
 import (
-	"01/pkg/card"
-	"01/pkg/money"
-	"01/pkg/transaction"
+	"github.com/egorlichenkoam/bgo3/pkg/card"
+	"github.com/egorlichenkoam/bgo3/pkg/money"
+	"github.com/egorlichenkoam/bgo3/pkg/transaction"
 	"testing"
 )
 

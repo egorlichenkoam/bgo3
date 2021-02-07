@@ -1,17 +1,17 @@
 package transfer
 
 import (
-	"01/pkg/card"
-	"01/pkg/money"
-	"01/pkg/transaction"
 	"errors"
+	"github.com/egorlichenkoam/bgo3/pkg/card"
+	"github.com/egorlichenkoam/bgo3/pkg/money"
+	"github.com/egorlichenkoam/bgo3/pkg/transaction"
 )
 
 var (
 	errNotEnoughMoney    = errors.New("not enough money")
-	errCardFromNotFound  = errors.New("card 'from' not found")
-	errCardToNotFound    = errors.New("card 'to' not found")
-	errCardNumberInvalid = errors.New("card number invalid")
+	errCardFromNotFound  = errors.New("main 'from' not found")
+	errCardToNotFound    = errors.New("main 'to' not found")
+	errCardNumberInvalid = errors.New("main number invalid")
 )
 
 type Commission struct {

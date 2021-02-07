@@ -1,7 +1,7 @@
 package person
 
 import (
-	"01/pkg/card"
+	"github.com/egorlichenkoam/bgo3/pkg/card"
 	"math/rand"
 )
 

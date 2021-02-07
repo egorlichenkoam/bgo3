@@ -1,7 +1,7 @@
 package card
 
 import (
-	"01/pkg/money"
+	"github.com/egorlichenkoam/bgo3/pkg/money"
 	"math/rand"
 	"strconv"
 	"strings"

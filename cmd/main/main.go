@@ -1,49 +1,165 @@
 package main
 
 import (
-	"01/pkg/card"
-	"01/pkg/transaction"
-	"01/pkg/transfer"
+	"bufio"
+	"bytes"
 	"fmt"
+	"github.com/egorlichenkoam/bgo3/pkg/card"
+	"github.com/egorlichenkoam/bgo3/pkg/money"
+	"github.com/egorlichenkoam/bgo3/pkg/person"
+	"github.com/egorlichenkoam/bgo3/pkg/transaction"
+	"io"
+	"io/ioutil"
 	"log"
+	"net"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
+const CRLF = "\r\n"
+
+var GTransactions []*transaction.Transaction = nil
+var GStandard map[*person.Person]map[transaction.Mcc]money.Money = nil
+var GPers *person.Person = nil
+
 func main() {
-	cardSvc := card.NewService("510621", "BANK")
-	transactionSvc := transaction.NewService()
-	commissions := transfer.Commission{
-		PercentInBank:       0,
-		MinimumInBank:       0,
-		PercentToDiffBank:   0.5,
-		MinimumToDiffBank:   10_00,
-		PercentBetweenBanks: 1.5,
-		MinimumBetweenBanks: 30_00,
-	}
-	transferSvc := transfer.NewService(cardSvc, transactionSvc, commissions)
-
-	cardSvc.Create(10_000_00, card.Rub, "5106212879499054")
-	cardSvc.Create(20_000_00, card.Rub, "5106212548197220")
-	cardSvc.Create(30_000_00, card.Rub, "5106211562724463")
-
-	printCards(cardSvc.Cards)
-	printTransactions(transactionSvc.Transactions)
-
-	fmt.Println(transferSvc.Card2Card(transferSvc.CardSvc.Cards[0].Number, transferSvc.CardSvc.Cards[1].Number, 1_000_00))
-	fmt.Println(transferSvc.Card2Card(transferSvc.CardSvc.Cards[1].Number, transferSvc.CardSvc.Cards[2].Number, 1_000_00))
-	fmt.Println(transferSvc.Card2Card(transferSvc.CardSvc.Cards[2].Number, transferSvc.CardSvc.Cards[0].Number, 1_000_00))
-
-	fmt.Println("")
-
-	printCards(cardSvc.Cards)
-	printTransactions(transactionSvc.Transactions)
-
-	sumConcurrently()
-
-	exportImport()
-
 	printVersion()
+	GTransactions, GStandard, GPers = transaction.GenerateTestData()
+	if err := execute(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func execute() (err error) {
+	listener, err := net.Listen("tcp", "0.0.0.0:9999")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if cerr := listener.Close(); cerr != nil {
+			log.Fatal(cerr)
+		}
+	}()
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		handle(conn)
+	}
+}
+
+func handle(conn net.Conn) {
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			doFatal(cerr)
+		}
+	}()
+	reader := bufio.NewReader(conn)
+	const delimiter = '\n'
+	line, err := reader.ReadString(delimiter)
+	if err != nil {
+		if err != io.EOF {
+			doFatal(err)
+		}
+		return
+	}
+	log.Printf("received: %s\n", line)
+
+	parts := strings.Split(line, " ")
+	if len(parts) != 3 {
+		log.Printf("invalide request line: %s", line)
+	}
+
+	path := parts[1]
+	switch path {
+	case "/":
+		err = writeIndex(conn)
+	case "/operations.csv":
+		err = writeOperation(conn, "csv")
+	case "/operations.xml":
+		err = writeOperation(conn, "xml")
+	case "/operations.json":
+		err = writeOperation(conn, "json")
+	default:
+		err = write404(conn)
+	}
+	if err != nil {
+		log.Print(err)
+	}
+}
+
+func writeIndex(conn net.Conn) error {
+	username := GPers.Name
+	balance := money.Money(0)
+	for _, card := range GPers.Cards {
+		balance = balance + card.Balance
+	}
+	page, err := ioutil.ReadFile("web/template/index.html")
+	page = bytes.ReplaceAll(page, []byte("{username}"), []byte(username))
+	page = bytes.ReplaceAll(page, []byte("{balance}"), []byte(strconv.Itoa(int(balance))))
+	writer := bufio.NewWriter(conn)
+	writer.WriteString("HTTP/1.1 200" + CRLF)
+	writer.WriteString("Content-Type: text/html;charset=utf-8" + CRLF)
+	writer.WriteString(fmt.Sprintf("Content-Length: %d", len(page)) + CRLF)
+	writer.WriteString("Connection: close" + CRLF + CRLF)
+	writer.Write(page)
+	err = writer.Flush()
+	if err != nil {
+		doFatal(err)
+	}
+	return err
+}
+
+func writeOperation(conn net.Conn, format string) error {
+	var page []byte
+	contentType := "Content-Type: %s;charset=utf-8" + CRLF
+	contentLength := "Content-Length: %d" + CRLF
+	switch format {
+	case "csv":
+		page = transaction.ExportCsvToBytes(GTransactions)
+		contentType = fmt.Sprintf(contentType, "text/csv")
+	case "xml":
+		page = transaction.ExportXmlToBytes(GTransactions)
+		contentType = fmt.Sprintf(contentType, "application/xml")
+	case "json":
+		page = transaction.ExportJsonToBytes(GTransactions)
+		contentType = fmt.Sprintf(contentType, "application/json")
+	default:
+		page = []byte("Что-то пошло не так... Ёпрст\n")
+		contentType = fmt.Sprintf(contentType, "plain/text")
+	}
+	writer := bufio.NewWriter(conn)
+	writer.WriteString("HTTP/1.1 200" + CRLF)
+	writer.WriteString(contentType)
+	writer.WriteString(fmt.Sprintf(contentLength, len(page)))
+	writer.WriteString("Connection: close" + CRLF + CRLF)
+	nn, err := writer.Write(page)
+	log.Print(nn)
+	if err != nil {
+		log.Print(err)
+	}
+	err = writer.Flush()
+	return err
+}
+
+func write404(conn net.Conn) error {
+	page, err := ioutil.ReadFile("web/template/404.html")
+	writer := bufio.NewWriter(conn)
+	writer.WriteString("HTTP/1.1 404" + CRLF)
+	writer.WriteString("Content-Type: text/html;charset=utf-8" + CRLF)
+	writer.WriteString(fmt.Sprintf("Content-Length: %d", len(page)) + CRLF)
+	writer.WriteString("Connection: close" + CRLF + CRLF)
+	writer.Write(page)
+	err = writer.Flush()
+	return err
+}
+
+func doFatal(err error) {
+	log.Fatal(err)
 }
 
 func printCards(cards []card.Card) {
