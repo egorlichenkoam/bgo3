@@ -39,7 +39,7 @@ func GenerateTestData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money,
 	}
 
 	transactionSvc := NewService()
-	transactions := make([]*Transaction, 1000)
+	transactions := make([]*Transaction, 100000)
 	standard := map[*person.Person]map[Mcc]money.Money{}
 
 	mccs := make([]Mcc, 0)

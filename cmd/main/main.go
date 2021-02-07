@@ -37,18 +37,18 @@ func execute() (err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
-		if cerr := listener.Close(); cerr != nil {
+	defer func(c io.Closer) {
+		if cerr := c.Close(); cerr != nil {
 			log.Fatal(cerr)
 		}
-	}()
+	}(listener)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		handle(conn)
+		go handle(conn)
 	}
 }
 
