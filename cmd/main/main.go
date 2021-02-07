@@ -8,6 +8,7 @@ import (
 	"github.com/egorlichenkoam/bgo3/pkg/dailycurrencies"
 	"github.com/egorlichenkoam/bgo3/pkg/money"
 	"github.com/egorlichenkoam/bgo3/pkg/person"
+	"github.com/egorlichenkoam/bgo3/pkg/qrcodegenerator"
 	"github.com/egorlichenkoam/bgo3/pkg/transaction"
 	"io"
 	"io/ioutil"
@@ -32,6 +33,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	qrcodegeneratorSvc := qrcodegenerator.NewServive(3000)
+	fp, err := qrcodegeneratorSvc.Encode("Привет с большого бодуна!", "qrcode.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(fp)
 	GTransactions, GStandard, GPers = transaction.GenerateTestData()
 	if err := execute(); err != nil {
 		log.Fatal(err)
