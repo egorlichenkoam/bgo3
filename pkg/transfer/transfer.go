@@ -83,7 +83,7 @@ func (s *Service) total(amount money.Money, percent float64, minimum money.Money
 
 func (s *Service) transfer(card *card.Card, amount money.Money, fromTo transaction.Type) (e error) {
 	e = nil
-	tx := s.TransactionSvc.CreateTransaction(amount, "", card, fromTo)
+	tx := s.TransactionSvc.CreateTransaction(amount, "", card.Id, fromTo)
 	if fromTo == transaction.From {
 		if card.Balance >= amount {
 			card.Balance -= amount

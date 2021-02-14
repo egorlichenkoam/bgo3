@@ -1,4 +1,8 @@
 .idea/
+.idea/*
+.idea/**
+.idea/*.*
+/pkg/transaction/txsExport.json
 /pkg/transaction/exports.csv
 /pkg/transaction/exports.json
 /exports.json
@@ -7,3 +11,8 @@
 /exports.csv
 /currencies.json
 /qrcode.png
+/cardsExport.json
+/personsExport.json
+/txsExport.json
+/pkg/card/cardsExport.json
+/pkg/person/personsExport.json

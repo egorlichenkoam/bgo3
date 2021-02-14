@@ -7,9 +7,9 @@ import (
 	"encoding/xml"
 	"github.com/egorlichenkoam/bgo3/pkg/card"
 	"github.com/egorlichenkoam/bgo3/pkg/money"
-	"github.com/egorlichenkoam/bgo3/pkg/person"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"sort"
@@ -24,6 +24,7 @@ type Type int
 const (
 	From Type = iota
 	To
+	name string = "transaction"
 )
 
 type Status string
@@ -57,14 +58,14 @@ func NewService() *Service {
 	return &Service{}
 }
 
-func (s *Service) CreateTransaction(amount money.Money, mcc Mcc, card *card.Card, fromTo Type) *Transaction {
+func (s *Service) CreateTransaction(amount money.Money, mcc Mcc, cardId int64, fromTo Type) *Transaction {
 	tx := Transaction{
 		Id:       rand.Int63(),
 		Amount:   amount,
 		Datetime: time.Now().Unix(),
 		Mcc:      mcc,
 		Status:   Wait,
-		CardId:   card.Id,
+		CardId:   cardId,
 		Type:     fromTo,
 	}
 	s.Transactions = append(s.Transactions, &tx)
@@ -127,7 +128,7 @@ func filterTransactionsByMcc(transactions []*Transaction, mccs []Mcc) []*Transac
 
 func (s *Service) TranslateMcc(code Mcc) string {
 	result := "Категория не указана"
-	value, ok := Mccs()[code]
+	value, ok := MCCs()[code]
 	if ok {
 		result = value
 	}
@@ -202,20 +203,22 @@ func (s *Service) SumConcurrentlyByCardAndYearMonth(card *card.Card, startTime, 
 	return result
 }
 
-func (s *Service) SumByPersonAndMccs(transactions []*Transaction, person *person.Person) (result map[Mcc]money.Money) {
-	result = make(map[Mcc]money.Money)
+func (s *Service) SumByMCCs(transactions []*Transaction, cards []*card.Card) map[Mcc]money.Money {
+	result := map[Mcc]money.Money{}
 	for _, tx := range transactions {
-		for _, c := range person.Cards {
-			if tx.CardId == c.Id {
-				result[tx.Mcc] += tx.Amount
-				break
+		if tx.Type == From {
+			for _, c := range cards {
+				if tx.CardId == c.Id {
+					result[tx.Mcc] += tx.Amount
+					break
+				}
 			}
 		}
 	}
 	return result
 }
 
-func (s *Service) SumByPersonAndMccsWithMutex(transactions []*Transaction, person *person.Person) map[Mcc]money.Money {
+func (s *Service) SumByMCCsWithMutex(transactions []*Transaction, cards []*card.Card) map[Mcc]money.Money {
 	partCount := 10
 	wg := sync.WaitGroup{}
 	wg.Add(partCount)
@@ -230,7 +233,7 @@ func (s *Service) SumByPersonAndMccsWithMutex(transactions []*Transaction, perso
 			}
 		}
 		go func() {
-			m := s.SumByPersonAndMccs(part, person)
+			m := s.SumByMCCs(part, cards)
 			mu.Lock()
 			for key, value := range m {
 				result[key] += value
@@ -243,7 +246,7 @@ func (s *Service) SumByPersonAndMccsWithMutex(transactions []*Transaction, perso
 	return result
 }
 
-func (s *Service) SumByPersonAndMccsWithChannels(transactions []*Transaction, person *person.Person) map[Mcc]money.Money {
+func (s *Service) SumByMCCsWithChannels(transactions []*Transaction, cards []*card.Card) map[Mcc]money.Money {
 	partCount := 10
 	result := make(map[Mcc]money.Money)
 	chMap := make(chan map[Mcc]money.Money)
@@ -256,7 +259,7 @@ func (s *Service) SumByPersonAndMccsWithChannels(transactions []*Transaction, pe
 			}
 		}
 		go func(chMap chan<- map[Mcc]money.Money) {
-			chMap <- s.SumByPersonAndMccs(part, person)
+			chMap <- s.SumByMCCs(part, cards)
 		}(chMap)
 	}
 	finished := 0
@@ -272,7 +275,7 @@ func (s *Service) SumByPersonAndMccsWithChannels(transactions []*Transaction, pe
 	return result
 }
 
-func (s *Service) SumByPersonAndMccsWithMutexStraightToMap(transactions []*Transaction, person *person.Person) map[Mcc]money.Money {
+func (s *Service) SumByMCCsWithMutexStraightToMap(transactions []*Transaction, cards []*card.Card) map[Mcc]money.Money {
 	partCount := 10
 	wg := sync.WaitGroup{}
 	wg.Add(partCount)
@@ -288,7 +291,7 @@ func (s *Service) SumByPersonAndMccsWithMutexStraightToMap(transactions []*Trans
 		}
 		go func() {
 			for _, tx := range part {
-				for _, c := range person.Cards {
+				for _, c := range cards {
 					if tx.CardId == c.Id {
 						mu.Lock()
 						result[tx.Mcc] += tx.Amount
@@ -422,7 +425,7 @@ func ImportCsv(filePath string) ([]*Transaction, error) {
 }
 
 func ExportJson(transactions []*Transaction) (err error) {
-	file, err := os.Create("exports.json")
+	file, err := os.Create("txsExport.json")
 	if err != nil {
 		return err
 	}
@@ -522,4 +525,27 @@ func ImportXml(filePath string) (transactions []*Transaction, err error) {
 	}
 	transactions = internalTransactions.Transactions
 	return transactions, nil
+}
+
+func TestData(cardsIds []int64) *Service {
+	log.Printf("%s - %s", name, "Start test data")
+	txSvc := NewService()
+	count := 100000
+	mccs := make([]Mcc, 0)
+	for key := range MCCs() {
+		mccs = append(mccs, key)
+	}
+	for count > 0 {
+		cardId := int64(0)
+		if cardsIds != nil {
+			if len(cardsIds) > 0 {
+				cardId = cardsIds[rand.Intn(len(cardsIds))]
+			}
+		}
+		mccIdx := rand.Intn(len(mccs))
+		txSvc.CreateTransaction(100_00, mccs[mccIdx], cardId, From)
+		count--
+	}
+	log.Printf("%s - %s", name, "End test data")
+	return txSvc
 }
