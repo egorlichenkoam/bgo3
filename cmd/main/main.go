@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/egorlichenkoam/bgo3/pkg/card"
+	"github.com/egorlichenkoam/bgo3/pkg/dailycurrencies"
 	"github.com/egorlichenkoam/bgo3/pkg/money"
 	"github.com/egorlichenkoam/bgo3/pkg/person"
+	"github.com/egorlichenkoam/bgo3/pkg/qrcodegenerator"
 	"github.com/egorlichenkoam/bgo3/pkg/transaction"
 	"io"
 	"io/ioutil"
@@ -26,6 +28,17 @@ var GPers *person.Person = nil
 
 func main() {
 	printVersion()
+	dailyCurrenciesSvc := dailycurrencies.NewService()
+	err := dailyCurrenciesSvc.Extract()
+	if err != nil {
+		log.Fatal(err)
+	}
+	qrcodegeneratorSvc := qrcodegenerator.NewServive(3000)
+	fp, err := qrcodegeneratorSvc.Encode("Привет с большого бодуна!", "qrcode.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(fp)
 	GTransactions, GStandard, GPers = transaction.GenerateTestData()
 	if err := execute(); err != nil {
 		log.Fatal(err)
@@ -37,18 +50,18 @@ func execute() (err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
-		if cerr := listener.Close(); cerr != nil {
+	defer func(c io.Closer) {
+		if cerr := c.Close(); cerr != nil {
 			log.Fatal(cerr)
 		}
-	}()
+	}(listener)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		handle(conn)
+		go handle(conn)
 	}
 }
 
@@ -313,5 +326,5 @@ func exportImport() {
 }
 
 func printVersion() {
-	fmt.Println("03.02.01")
+	fmt.Println("03.03")
 }
