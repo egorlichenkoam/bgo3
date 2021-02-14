@@ -20,13 +20,15 @@ type Card struct {
 	Currency Currency
 	Number   string
 	Icon     string
+	PersonId int64
 }
 
-func (s *Service) Create(balance money.Money, currency Currency, number string) *Card {
-	return s.Add(Card{Id: rand.Int63(), Issuer: s.Issuer, Balance: balance, Currency: currency, Number: number, Icon: ""})
+func (s *Service) Create(personId int64, balance money.Money, currency Currency, number string) *Card {
+	return s.Add(Card{Id: rand.Int63(), Issuer: s.Issuer, Balance: balance, Currency: currency, Number: number, Icon: "", PersonId: personId})
 }
 
 type Service struct {
+	name     string "Card service"
 	IssuerId string
 	Issuer   string
 	Cards    []Card
@@ -44,6 +46,17 @@ func (s *Service) Add(card Card) *Card {
 	return &card
 }
 
+//return slice of cards by person id
+func (s *Service) ByPersonId(personId int64) []*Card {
+	personCards := make([]*Card, 0)
+	for _, card := range s.Cards {
+		if card.PersonId == personId {
+			personCards = append(personCards, &card)
+		}
+	}
+	return personCards
+}
+
 func (s *Service) ByNumber(number string) (card *Card) {
 	card = nil
 	if s.isOurCard(number) {
@@ -53,7 +66,7 @@ func (s *Service) ByNumber(number string) (card *Card) {
 			}
 		}
 		if card == nil {
-			card = s.Create(0, Rub, number)
+			card = s.Create(0, 0, Rub, number)
 		}
 	}
 	return

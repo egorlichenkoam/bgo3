@@ -29,13 +29,13 @@ func TestService_Card2Card(t *testing.T) {
 	}
 	transferSvc := NewService(cardSvc, transactionSvc, commissions)
 
-	cardSvc.Create(10_000_00, card.Rub, "5106212879499054")
-	cardSvc.Create(22_433_00, card.Rub, "5106212548197220")
-	cardSvc.Create(15_000_00, card.Rub, "5106211562724463")
-	cardSvc.Create(30_000_00, card.Rub, "5106219146702939")
-	cardSvc.Create(55_000_00, card.Rub, "5106218923315543")
-	cardSvc.Create(10_500_00, card.Rub, "5106214088426217")
-	cardSvc.Create(10_900_00, card.Rub, "5106217924694328")
+	cardSvc.Create(0, 10_000_00, card.Rub, "5106212879499054")
+	cardSvc.Create(0, 22_433_00, card.Rub, "5106212548197220")
+	cardSvc.Create(0, 15_000_00, card.Rub, "5106211562724463")
+	cardSvc.Create(0, 30_000_00, card.Rub, "5106219146702939")
+	cardSvc.Create(0, 55_000_00, card.Rub, "5106218923315543")
+	cardSvc.Create(0, 10_500_00, card.Rub, "5106214088426217")
+	cardSvc.Create(0, 10_900_00, card.Rub, "5106217924694328")
 
 	tests := []struct {
 		name      string
@@ -121,7 +121,6 @@ func TestService_Card2Card(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotTotal, gotError := transferSvc.Card2Card(tt.args.from, tt.args.to, tt.args.amount)
-			t.Log(gotTotal, tt.wantTotal, gotError, tt.wantError)
 			if gotTotal != tt.wantTotal {
 				t.Errorf("Card2Card() gotTotal = %v, want %v", gotTotal, tt.wantTotal)
 			}

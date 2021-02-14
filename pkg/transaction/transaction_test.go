@@ -9,33 +9,32 @@ import (
 	"testing"
 )
 
-var GTransactions []*Transaction = nil
+var GPersonSvc *person.Service = nil
+var GCardSvc *card.Service = nil
+var GTransactionSvc *Service = nil
 var GStandard map[*person.Person]map[Mcc]money.Money = nil
-var GPers *person.Person = nil
+var GPerson *person.Person = nil
 
 func CreateTestData() {
-	if (GTransactions == nil) || (GStandard == nil) || (GPers == nil) {
-		GTransactions, GStandard, GPers = GenerateTestData()
+	if (GPersonSvc == nil) || (GCardSvc == nil) || (GTransactionSvc == nil) || (GStandard == nil) || (GPerson == nil) {
+		GPersonSvc, GCardSvc, GTransactionSvc, GStandard, GPerson = GenerateTestData()
 	}
 }
 
 func TestService_SortedByType(t *testing.T) {
-	CreateTestData()
-
-	cardSvc := card.NewService("510621", "BABANK")
+	cardSvc := card.NewService("510621", "VISA")
 	transactionSvc := NewService()
 	personSvc := person.NewService()
 
-	pers := personSvc.Create("Иванов Иван Иванович")
-	card00 := cardSvc.Create(1000_000_00, card.Rub, "5106212879499054")
-	personSvc.AddCard(pers, card00)
+	p := personSvc.Create("Иванов Иван Иванович")
+	card00 := cardSvc.Create(p.Id, 1000_000_00, card.Rub, "5106212879499054")
 
-	transactionSvc.CreateTransaction(1_000_00, "", card00, From)
-	transactionSvc.CreateTransaction(5_000_00, "", card00, From)
-	transactionSvc.CreateTransaction(6_000_00, "", card00, From)
-	transactionSvc.CreateTransaction(500_00, "", card00, From)
-	transactionSvc.CreateTransaction(50_000_00, "", card00, From)
-	transactionSvc.CreateTransaction(49_000_00, "", card00, From)
+	transactionSvc.CreateTransaction(1_000_00, "", card00.Id, From)
+	transactionSvc.CreateTransaction(5_000_00, "", card00.Id, From)
+	transactionSvc.CreateTransaction(6_000_00, "", card00.Id, From)
+	transactionSvc.CreateTransaction(500_00, "", card00.Id, From)
+	transactionSvc.CreateTransaction(50_000_00, "", card00.Id, From)
+	transactionSvc.CreateTransaction(49_000_00, "", card00.Id, From)
 
 	transactions := []Transaction{
 		{
@@ -120,7 +119,7 @@ func areTransactionsEquals(got []*Transaction, want []Transaction) bool {
 	return true
 }
 
-func TestService_SumByPersonAndMccs(t *testing.T) {
+func TestService_SumByMCCs(t *testing.T) {
 	CreateTestData()
 
 	type fields struct {
@@ -128,7 +127,7 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 	}
 	type args struct {
 		transactions []*Transaction
-		person       *person.Person
+		cards        []*card.Card
 	}
 	tests := []struct {
 		name   string
@@ -137,15 +136,15 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 		want   map[Mcc]money.Money
 	}{
 		{
-			name: "TestService_SumByPersonAndMccs",
+			name: "TestService_SumByMCCs",
 			fields: fields{
-				Transactions: GTransactions,
+				Transactions: GTransactionSvc.Transactions,
 			},
 			args: args{
-				transactions: GTransactions,
-				person:       GPers,
+				transactions: GTransactionSvc.Transactions,
+				cards:        GCardSvc.ByPersonId(GPerson.Id),
 			},
-			want: GStandard[GPers],
+			want: GStandard[GPerson],
 		},
 	}
 	for _, tt := range tests {
@@ -153,21 +152,21 @@ func TestService_SumByPersonAndMccs(t *testing.T) {
 			s := &Service{
 				Transactions: tt.fields.Transactions,
 			}
-			if gotResult := s.SumByPersonAndMccs(tt.args.transactions, tt.args.person); !reflect.DeepEqual(gotResult, tt.want) {
-				t.Errorf("SumByPersonAndMccs() = %v, want %v", gotResult, tt.want)
+			if gotResult := s.SumByMCCs(tt.args.transactions, tt.args.cards); !reflect.DeepEqual(gotResult, tt.want) {
+				t.Errorf("SumByMCCs() = %v, want %v", gotResult, tt.want)
 			}
 		})
 	}
 }
 
-func BenchmarkSumByPersonAndMccs(b *testing.B) {
+func BenchmarkSumByMCCs(b *testing.B) {
 	CreateTestData()
 
 	s := NewService()
-	want := GStandard[GPers]
+	want := GStandard[GPerson]
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		result := s.SumByPersonAndMccs(GTransactions, GPers)
+		result := s.SumByMCCs(GTransactionSvc.Transactions, GCardSvc.ByPersonId(GPerson.Id))
 		b.StopTimer()
 		if !reflect.DeepEqual(result, want) {
 			b.Fatalf("invalid result, got %v, want %v", result, want)
@@ -176,7 +175,7 @@ func BenchmarkSumByPersonAndMccs(b *testing.B) {
 	}
 }
 
-func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
+func TestService_SumByMCCsWithMutex(t *testing.T) {
 	CreateTestData()
 
 	type fields struct {
@@ -184,7 +183,7 @@ func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
 	}
 	type args struct {
 		transactions []*Transaction
-		person       *person.Person
+		cards        []*card.Card
 	}
 	tests := []struct {
 		name   string
@@ -193,15 +192,15 @@ func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
 		want   map[Mcc]money.Money
 	}{
 		{
-			name: "TestService_SumByPersonAndMccsWithMutex",
+			name: "TestService_SumByMCCsWithMutex",
 			fields: fields{
-				Transactions: GTransactions,
+				Transactions: GTransactionSvc.Transactions,
 			},
 			args: args{
-				transactions: GTransactions,
-				person:       GPers,
+				transactions: GTransactionSvc.Transactions,
+				cards:        GCardSvc.ByPersonId(GPerson.Id),
 			},
-			want: GStandard[GPers],
+			want: GStandard[GPerson],
 		},
 	}
 	for _, tt := range tests {
@@ -209,21 +208,21 @@ func TestService_SumByPersonAndMccsWithMutex(t *testing.T) {
 			s := &Service{
 				Transactions: tt.fields.Transactions,
 			}
-			if got := s.SumByPersonAndMccsWithMutex(tt.args.transactions, tt.args.person); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SumByPersonAndMccWithMutex() = %v, want %v", got, tt.want)
+			if got := s.SumByMCCsWithMutex(tt.args.transactions, tt.args.cards); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SumByMccWithMutex() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func BenchmarkSumByPersonAndMccsWithMutex(b *testing.B) {
+func BenchmarkSumByMCCsWithMutex(b *testing.B) {
 	CreateTestData()
 
 	s := NewService()
-	want := GStandard[GPers]
+	want := GStandard[GPerson]
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		result := s.SumByPersonAndMccsWithMutex(GTransactions, GPers)
+		result := s.SumByMCCsWithMutex(GTransactionSvc.Transactions, GCardSvc.ByPersonId(GPerson.Id))
 		b.StopTimer()
 		if !reflect.DeepEqual(result, want) {
 			b.Fatalf("invalid result, got %v, want %v", result, want)
@@ -232,7 +231,7 @@ func BenchmarkSumByPersonAndMccsWithMutex(b *testing.B) {
 	}
 }
 
-func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
+func TestService_SumByMCCsWithChannels(t *testing.T) {
 	CreateTestData()
 
 	type fields struct {
@@ -240,7 +239,7 @@ func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
 	}
 	type args struct {
 		transactions []*Transaction
-		person       *person.Person
+		cards        []*card.Card
 	}
 	tests := []struct {
 		name   string
@@ -249,15 +248,15 @@ func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
 		want   map[Mcc]money.Money
 	}{
 		{
-			name: "TestService_SumByPersonAndMccsWithChannels",
+			name: "TestService_SumByMCCsWithChannels",
 			fields: fields{
-				Transactions: GTransactions,
+				Transactions: GTransactionSvc.Transactions,
 			},
 			args: args{
-				transactions: GTransactions,
-				person:       GPers,
+				transactions: GTransactionSvc.Transactions,
+				cards:        GCardSvc.ByPersonId(GPerson.Id),
 			},
-			want: GStandard[GPers],
+			want: GStandard[GPerson],
 		},
 	}
 	for _, tt := range tests {
@@ -265,21 +264,21 @@ func TestService_SumByPersonAndMccsWithChannels(t *testing.T) {
 			s := &Service{
 				Transactions: tt.fields.Transactions,
 			}
-			if got := s.SumByPersonAndMccsWithChannels(tt.args.transactions, tt.args.person); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SumByPersonAndMccsWithChannels() = %v, want %v", got, tt.want)
+			if got := s.SumByMCCsWithChannels(tt.args.transactions, tt.args.cards); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SumByMCCsWithChannels() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func BenchmarkSumByPersonAndMccsWithChannels(b *testing.B) {
+func BenchmarkSumByMCCsWithChannels(b *testing.B) {
 	CreateTestData()
 
 	s := NewService()
-	want := GStandard[GPers]
+	want := GStandard[GPerson]
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		result := s.SumByPersonAndMccsWithChannels(GTransactions, GPers)
+		result := s.SumByMCCsWithChannels(GTransactionSvc.Transactions, GCardSvc.ByPersonId(GPerson.Id))
 		b.StopTimer()
 		if !reflect.DeepEqual(result, want) {
 			b.Fatalf("invalid result, got %v, want %v", result, want)
@@ -288,7 +287,7 @@ func BenchmarkSumByPersonAndMccsWithChannels(b *testing.B) {
 	}
 }
 
-func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
+func TestService_SumByMCCsWithMutexStraightToMap(t *testing.T) {
 	CreateTestData()
 
 	type fields struct {
@@ -296,7 +295,7 @@ func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
 	}
 	type args struct {
 		transactions []*Transaction
-		person       *person.Person
+		cards        []*card.Card
 	}
 	tests := []struct {
 		name   string
@@ -305,15 +304,15 @@ func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
 		want   map[Mcc]money.Money
 	}{
 		{
-			name: "TestService_SumByPersonAndMccsWithMutexStraightToMap",
+			name: "TestService_SumByMCCsWithMutexStraightToMap",
 			fields: fields{
-				Transactions: GTransactions,
+				Transactions: GTransactionSvc.Transactions,
 			},
 			args: args{
-				transactions: GTransactions,
-				person:       GPers,
+				transactions: GTransactionSvc.Transactions,
+				cards:        GCardSvc.ByPersonId(GPerson.Id),
 			},
-			want: GStandard[GPers],
+			want: GStandard[GPerson],
 		},
 	}
 	for _, tt := range tests {
@@ -321,21 +320,21 @@ func TestService_SumByPersonAndMccsWithMutexStraightToMap(t *testing.T) {
 			s := &Service{
 				Transactions: tt.fields.Transactions,
 			}
-			if got := s.SumByPersonAndMccsWithMutexStraightToMap(tt.args.transactions, tt.args.person); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SumByPersonAndMccsWithMutexStraightToMap() = %v, want %v", got, tt.want)
+			if got := s.SumByMCCsWithMutexStraightToMap(tt.args.transactions, tt.args.cards); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SumByMCCsWithMutexStraightToMap() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func BenchmarkSumByPersonAndMccsWithMutexStraightToMap(b *testing.B) {
+func BenchmarkSumByMCCsWithMutexStraightToMap(b *testing.B) {
 	CreateTestData()
 
 	s := NewService()
-	want := GStandard[GPers]
+	want := GStandard[GPerson]
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		result := s.SumByPersonAndMccsWithMutexStraightToMap(GTransactions, GPers)
+		result := s.SumByMCCsWithMutexStraightToMap(GTransactionSvc.Transactions, GCardSvc.ByPersonId(GPerson.Id))
 		b.StopTimer()
 		if !reflect.DeepEqual(result, want) {
 			b.Fatalf("invalid result, got %v, want %v", result, want)
@@ -357,7 +356,7 @@ func TestExportCsv(t *testing.T) {
 		{
 			name: "TestExportCsv",
 			args: args{
-				transactions: GTransactions,
+				transactions: GTransactionSvc.Transactions,
 			},
 			want: nil,
 		},
@@ -389,7 +388,7 @@ func TestImportCsv(t *testing.T) {
 			args: args{
 				filePath: fPath,
 			},
-			want:    GTransactions,
+			want:    GTransactionSvc.Transactions,
 			wantErr: nil,
 		},
 	}
@@ -420,7 +419,7 @@ func TestExportJson(t *testing.T) {
 		{
 			name: "TestExportJson",
 			args: args{
-				transactions: GTransactions,
+				transactions: GTransactionSvc.Transactions,
 			},
 			wantErr: nil,
 		}}
@@ -451,7 +450,7 @@ func TestImportJson(t *testing.T) {
 			args: args{
 				filePath: fPath,
 			},
-			want:    GTransactions,
+			want:    GTransactionSvc.Transactions,
 			wantErr: nil,
 		},
 	}
@@ -482,7 +481,7 @@ func TestExportXml(t *testing.T) {
 		{
 			name: "TestExportXml",
 			args: args{
-				transactions: GTransactions,
+				transactions: GTransactionSvc.Transactions,
 			},
 			wantErr: nil,
 		}}
@@ -513,7 +512,7 @@ func TestImportXml(t *testing.T) {
 			args: args{
 				filePath: fPath,
 			},
-			want:    GTransactions,
+			want:    GTransactionSvc.Transactions,
 			wantErr: nil,
 		},
 	}

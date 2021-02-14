@@ -1,18 +1,16 @@
 package person
 
 import (
-	"github.com/egorlichenkoam/bgo3/pkg/card"
 	"math/rand"
 )
 
 type Person struct {
-	Id    int64
-	Name  string
-	Cards []*card.Card
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 type Service struct {
-	Persons []*Person
+	Persons []*Person `json:"person"`
 }
 
 func NewService() *Service {
@@ -21,17 +19,12 @@ func NewService() *Service {
 
 func (s *Service) Create(name string) *Person {
 	return s.add(&Person{
-		Id:    rand.Int63(),
-		Name:  name,
-		Cards: make([]*card.Card, 0),
+		Id:   rand.Int63(),
+		Name: name,
 	})
 }
 
 func (s *Service) add(person *Person) *Person {
 	s.Persons = append(s.Persons, person)
 	return person
-}
-
-func (s *Service) AddCard(person *Person, card *card.Card) {
-	person.Cards = append(person.Cards, card)
 }

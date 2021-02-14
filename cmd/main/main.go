@@ -14,20 +14,27 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
-	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const CRLF = "\r\n"
 
-var GTransactions []*transaction.Transaction = nil
+var GPersonSvc *person.Service = nil
+var GCardSvc *card.Service = nil
+var GTransactionSvc *transaction.Service = nil
 var GStandard map[*person.Person]map[transaction.Mcc]money.Money = nil
-var GPers *person.Person = nil
+var GPerson *person.Person = nil
+
+func createTestData() {
+	if (GPersonSvc == nil) || (GCardSvc == nil) || (GTransactionSvc == nil) || (GStandard == nil) || (GPerson == nil) {
+		GPersonSvc, GCardSvc, GTransactionSvc, GStandard, GPerson = transaction.GenerateTestData()
+	}
+}
 
 func main() {
 	printVersion()
+	createTestData()
 	dailyCurrenciesSvc := dailycurrencies.NewService()
 	err := dailyCurrenciesSvc.Extract()
 	if err != nil {
@@ -39,7 +46,6 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Println(fp)
-	GTransactions, GStandard, GPers = transaction.GenerateTestData()
 	if err := execute(); err != nil {
 		log.Fatal(err)
 	}
@@ -106,9 +112,9 @@ func handle(conn net.Conn) {
 }
 
 func writeIndex(conn net.Conn) error {
-	username := GPers.Name
+	username := GPerson.Name
 	balance := money.Money(0)
-	for _, card := range GPers.Cards {
+	for _, card := range GCardSvc.ByPersonId(GPerson.Id) {
 		balance = balance + card.Balance
 	}
 	page, err := ioutil.ReadFile("web/template/index.html")
@@ -133,13 +139,13 @@ func writeOperation(conn net.Conn, format string) error {
 	contentLength := "Content-Length: %d" + CRLF
 	switch format {
 	case "csv":
-		page = transaction.ExportCsvToBytes(GTransactions)
+		page = transaction.ExportCsvToBytes(GTransactionSvc.Transactions)
 		contentType = fmt.Sprintf(contentType, "text/csv")
 	case "xml":
-		page = transaction.ExportXmlToBytes(GTransactions)
+		page = transaction.ExportXmlToBytes(GTransactionSvc.Transactions)
 		contentType = fmt.Sprintf(contentType, "application/xml")
 	case "json":
-		page = transaction.ExportJsonToBytes(GTransactions)
+		page = transaction.ExportJsonToBytes(GTransactionSvc.Transactions)
 		contentType = fmt.Sprintf(contentType, "application/json")
 	default:
 		page = []byte("Что-то пошло не так... Ёпрст\n")
@@ -173,156 +179,6 @@ func write404(conn net.Conn) error {
 
 func doFatal(err error) {
 	log.Fatal(err)
-}
-
-func printCards(cards []card.Card) {
-	for _, c := range cards {
-		fmt.Println(c)
-	}
-	fmt.Println("")
-}
-
-func printTransactions(txs []*transaction.Transaction) {
-	for _, tx := range txs {
-		fmt.Println(tx, tx.CardId)
-	}
-	fmt.Println("")
-}
-
-func sumConcurrently() {
-	cardSvc := card.NewService("510621", "BABANK")
-	transactionSvc := transaction.NewService()
-	card00 := cardSvc.Create(1000_000_00, card.Rub, "5106212879499054")
-
-	tx := transactionSvc.CreateTransaction(1_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 12, 1, 0, 0, 0, 0, time.Local).Unix()
-	tx = transactionSvc.CreateTransaction(12_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 12, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(10_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 11, 1, 0, 0, 0, 0, time.Local).Unix()
-	tx = transactionSvc.CreateTransaction(22_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 11, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(100_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 9, 1, 0, 0, 0, 0, time.Local).Unix()
-	tx = transactionSvc.CreateTransaction(200_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 9, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(800_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 6, 1, 0, 0, 0, 0, time.Local).Unix()
-	tx = transactionSvc.CreateTransaction(2_000_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 6, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(8_700_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 3, 1, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(3_000_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 4, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(1_000_000_00, "", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 1, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	result := transactionSvc.SumConcurrentlyByCardAndYearMonth(card00, time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local).Unix(), time.Date(2020, 12, 1, 0, 0, 0, 0, time.Local).Unix(), transaction.From)
-
-	fmt.Println("------------------------------------------------------------------ ")
-	keys := make([]time.Time, 0)
-	result.Range(func(key, value interface{}) bool {
-		k, _ := key.(time.Time)
-		keys = append(keys, k)
-		return true
-	})
-	for _, key := range keys {
-		value, _ := result.Load(key)
-		fmt.Println(key, " - ", value)
-	}
-	fmt.Println("------------------------------------------------------------------")
-}
-
-func exportImport() {
-	cardSvc := card.NewService("510621", "BABANK")
-	transactionSvc := transaction.NewService()
-	card00 := cardSvc.Create(1000_000_00, card.Rub, "5106212879499054")
-
-	tx := transactionSvc.CreateTransaction(1_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 12, 1, 0, 0, 0, 0, time.Local).Unix()
-	tx = transactionSvc.CreateTransaction(12_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 12, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(10_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 11, 1, 0, 0, 0, 0, time.Local).Unix()
-	tx = transactionSvc.CreateTransaction(22_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 11, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(100_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 9, 1, 0, 0, 0, 0, time.Local).Unix()
-	tx = transactionSvc.CreateTransaction(200_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 9, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(800_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 6, 1, 0, 0, 0, 0, time.Local).Unix()
-	tx = transactionSvc.CreateTransaction(2_000_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 6, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(8_700_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 3, 1, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(3_000_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 4, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	tx = transactionSvc.CreateTransaction(1_000_000_00, "5812", card00, transaction.From)
-	tx.Datetime = time.Date(2020, 1, 5, 0, 0, 0, 0, time.Local).Unix()
-
-	log.Println("CSV")
-	err := transaction.ExportCsv(transactionSvc.Transactions)
-	if err != nil {
-		log.Println(err)
-	} else {
-		path, _ := os.Getwd()
-		path = path + "/exports.csv"
-		txs, err := transaction.ImportCsv(path)
-		if err != nil {
-			log.Println(err)
-		} else {
-			for _, tx := range txs {
-				log.Println(tx)
-			}
-		}
-	}
-
-	log.Println("JSON")
-	err = transaction.ExportJson(transactionSvc.Transactions)
-	if err != nil {
-		log.Println(err)
-	} else {
-		path, _ := os.Getwd()
-		path = path + "/exports.json"
-		txs, err := transaction.ImportJson(path)
-		if err != nil {
-			log.Println(err)
-		} else {
-			for _, tx := range txs {
-				log.Println(tx)
-			}
-		}
-	}
-
-	log.Println("XML")
-	err = transaction.ExportXml(transactionSvc.Transactions)
-	if err != nil {
-		log.Println(err)
-	} else {
-		path, _ := os.Getwd()
-		path = path + "/exports.xml"
-		txs, err := transaction.ImportXml(path)
-		if err != nil {
-			log.Println(err)
-		} else {
-			for _, tx := range txs {
-				log.Println(tx)
-			}
-		}
-	}
 }
 
 func printVersion() {

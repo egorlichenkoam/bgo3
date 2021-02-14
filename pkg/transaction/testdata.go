@@ -7,7 +7,7 @@ import (
 	"math/rand"
 )
 
-func GenerateTestData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money, *person.Person) {
+func GenerateTestData() (*person.Service, *card.Service, *Service, map[*person.Person]map[Mcc]money.Money, *person.Person) {
 	personSvc := person.NewService()
 	personSvc.Create("Иванов Иван Иванович")
 	personSvc.Create("Петров Перт Петрович")
@@ -34,8 +34,7 @@ func GenerateTestData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money,
 		"5106213096531406"}
 	cardSvc := card.NewService("510621", "BABABANK")
 	for _, number := range cardsNumbers {
-		c := cardSvc.Create(10_000_000_00, card.Rub, number)
-		personSvc.AddCard(personSvc.Persons[rand.Intn(personsCount)], c)
+		cardSvc.Create(personSvc.Persons[rand.Intn(personsCount)].Id, 10_000_000_00, card.Rub, number)
 	}
 
 	transactionSvc := NewService()
@@ -43,22 +42,19 @@ func GenerateTestData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money,
 	standard := map[*person.Person]map[Mcc]money.Money{}
 
 	mccs := make([]Mcc, 0)
-	for key := range Mccs() {
+	for key := range MCCs() {
 		mccs = append(mccs, key)
 	}
 
-	for i := range transactions {
-		pers := personSvc.Persons[rand.Intn(personsCount)]
-		cardIdx := rand.Intn(len(pers.Cards))
-		standardMap := standard[pers]
-		if standardMap == nil {
-			standardMap = map[Mcc]money.Money{}
-		}
+	for range transactions {
+		cardIdx := rand.Intn(len(cardSvc.Cards))
 		mccIdx := rand.Intn(len(mccs))
-		tx := transactionSvc.CreateTransaction(100_00, mccs[mccIdx], pers.Cards[cardIdx], From)
-		transactions[i] = tx
-		standardMap[tx.Mcc] += tx.Amount
-		standard[pers] = standardMap
+		transactionSvc.CreateTransaction(100_00, mccs[mccIdx], cardSvc.Cards[cardIdx].Id, From)
+	}
+
+	for _, p := range personSvc.Persons {
+		pCards := cardSvc.ByPersonId(p.Id)
+		standard[p] = transactionSvc.SumByMCCs(transactionSvc.Transactions, pCards)
 	}
 
 	standardKeys := make([]*person.Person, 0)
@@ -66,7 +62,7 @@ func GenerateTestData() ([]*Transaction, map[*person.Person]map[Mcc]money.Money,
 		standardKeys = append(standardKeys, key)
 	}
 	keyIdx := rand.Intn(len(standardKeys))
-	pers := standardKeys[keyIdx]
+	p := standardKeys[keyIdx]
 
-	return transactions, standard, pers
+	return personSvc, cardSvc, transactionSvc, standard, p
 }

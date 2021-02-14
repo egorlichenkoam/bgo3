@@ -129,7 +129,7 @@ func fillValuteJsons(vcs valcursDTO) ([]valuteJSON, error) {
 		i++
 	}
 	if len(vcjs) < 1 {
-		log.Printf("Zero valuteJSON filled, but %d valuteDTOs were passed")
+		log.Printf("Zero valuteJSON filled, but %d valuteDTOs were passed", len(vcjs))
 		return nil, errors.New("Zero valuteJSON filled")
 	}
 	log.Printf("%s : %s (count : %d)", name, "fillValuteJsons - end", i)
