@@ -1,0 +1,102 @@
+###
+GET http://localhost:9999/getCards HTTP/1.1
+
+###
+POST http://localhost:9999/getCards HTTP/1.1
+
+###
+POST http://localhost:9999/getCards HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=5577006791947774540
+
+###
+POST http://localhost:9999/getCards HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=5577006791947779410
+
+###
+POST http://localhost:9999/getCards HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=111
+
+###
+POST http://localhost:9999/getCards HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=8674665223082153551
+
+###
+POST http://localhost:9999/getCards HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=6129484611666145821
+
+###
+GET http://localhost:9999/addCard HTTP/1.1
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=5577006791947774540
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=111
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=5577006791947779410&cardType=0
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=8674665223082153551&cardType=1
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=6129484611666145821&cardType=4
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=8674665223082153551&cardType=1&issuer=VISA
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=6129484611666145821&cardType=1&issuer=MASTERCARD
+
+###
+POST http://localhost:9999/addCard HTTP/1.1
+Accept: text/plain
+Content-Type: application/x-www-form-urlencoded
+
+personId=111&cardType=1&issuer=MASTERCARD

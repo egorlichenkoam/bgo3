@@ -27,7 +27,7 @@ func TestService_SortedByType(t *testing.T) {
 	personSvc := person.NewService()
 
 	p := personSvc.Create("Иванов Иван Иванович")
-	card00 := cardSvc.Create(p.Id, 1000_000_00, card.Rub, "5106212879499054")
+	card00 := cardSvc.Create("VISA", p.Id, 1000_000_00, card.Rub, "5106212879499054", "PLASTIC")
 
 	transactionSvc.CreateTransaction(1_000_00, "", card00.Id, From)
 	transactionSvc.CreateTransaction(5_000_00, "", card00.Id, From)
@@ -415,14 +415,13 @@ func TestExportJson(t *testing.T) {
 		name    string
 		args    args
 		wantErr error
-	}{
-		{
-			name: "TestExportJson",
-			args: args{
-				transactions: GTransactionSvc.Transactions,
-			},
-			wantErr: nil,
-		}}
+	}{{
+		name: "TestExportJson",
+		args: args{
+			transactions: GTransactionSvc.Transactions,
+		},
+		wantErr: nil,
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := ExportJson(tt.args.transactions); err != tt.wantErr {
@@ -435,7 +434,7 @@ func TestExportJson(t *testing.T) {
 func TestImportJson(t *testing.T) {
 	CreateTestData()
 	fPath, _ := os.Getwd()
-	fPath = fPath + "/exports.json"
+	fPath = fPath + "/txsExport.json"
 	type args struct {
 		filePath string
 	}

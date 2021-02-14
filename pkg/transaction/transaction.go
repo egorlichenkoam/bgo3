@@ -9,6 +9,7 @@ import (
 	"github.com/egorlichenkoam/bgo3/pkg/money"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"sort"
@@ -23,6 +24,7 @@ type Type int
 const (
 	From Type = iota
 	To
+	name string = "transaction"
 )
 
 type Status string
@@ -423,7 +425,7 @@ func ImportCsv(filePath string) ([]*Transaction, error) {
 }
 
 func ExportJson(transactions []*Transaction) (err error) {
-	file, err := os.Create("exports.json")
+	file, err := os.Create("txsExport.json")
 	if err != nil {
 		return err
 	}
@@ -523,4 +525,27 @@ func ImportXml(filePath string) (transactions []*Transaction, err error) {
 	}
 	transactions = internalTransactions.Transactions
 	return transactions, nil
+}
+
+func TestData(cardsIds []int64) *Service {
+	log.Printf("%s - %s", name, "Start test data")
+	txSvc := NewService()
+	count := 100000
+	mccs := make([]Mcc, 0)
+	for key := range MCCs() {
+		mccs = append(mccs, key)
+	}
+	for count > 0 {
+		cardId := int64(0)
+		if cardsIds != nil {
+			if len(cardsIds) > 0 {
+				cardId = cardsIds[rand.Intn(len(cardsIds))]
+			}
+		}
+		mccIdx := rand.Intn(len(mccs))
+		txSvc.CreateTransaction(100_00, mccs[mccIdx], cardId, From)
+		count--
+	}
+	log.Printf("%s - %s", name, "End test data")
+	return txSvc
 }
