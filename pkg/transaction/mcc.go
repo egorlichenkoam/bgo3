@@ -2,7 +2,7 @@ package transaction
 
 type Mcc string
 
-func Mccs() map[Mcc]string {
+func MCCs() map[Mcc]string {
 	return map[Mcc]string{
 		"5411": "Типа магазин",
 		"0000": "Оплата услуг сверхсекретного агента",
