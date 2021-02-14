@@ -19,9 +19,9 @@ func Execute(addr string, personSvc *person.Service, cardSvc *card.Service, txSv
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           application,
-		ReadTimeout:       1 * time.Second,
-		ReadHeaderTimeout: 1 * time.Second,
-		WriteTimeout:      1 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      5 * time.Second,
 	}
 	return server.ListenAndServe()
 }
