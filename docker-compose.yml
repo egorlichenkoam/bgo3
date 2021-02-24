@@ -2,6 +2,7 @@ version: '3.8'
 services:
   bankdb:
     image: postgres
+    command: [ "postgres", "-c", "log_statement=all", "-c", "log_destination=stderr" ]
     container_name: bankdb
     ports:
       - 5555:5432
@@ -9,3 +10,5 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=appdb
+    volumes:
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
