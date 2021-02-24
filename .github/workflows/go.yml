@@ -31,8 +31,6 @@ jobs:
       - name: Test
         run: go test -v ./...
 
-      # добавили всё, что ниже
-
       - name: Build binary for docker image
         run: go build -v -o bank ./cmd/main
         env:
@@ -49,3 +47,6 @@ jobs:
           registry: docker.pkg.github.com
           repository: egorlichenkoam/bgo3/bank
           tag_with_ref: true
+
+  - name: Build from Docker multistage
+      run: docker build -f Dockerfile.multistage -t multibank .
