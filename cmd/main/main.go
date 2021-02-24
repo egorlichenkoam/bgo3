@@ -63,11 +63,11 @@ func main() {
 	printVersion()
 	log.Printf("%s - %s", name, "main - start")
 	personSvc, cardSvc, txSvc := createTestData()
-	host, ok := os.LookupEnv("APP_HOST")
+	host, ok := os.LookupEnv("HOST")
 	if !ok {
 		host = defaultHost
 	}
-	port, ok := os.LookupEnv("APP_PORT")
+	port, ok := os.LookupEnv("PORT")
 	if !ok {
 		port = defaultPort
 	}
