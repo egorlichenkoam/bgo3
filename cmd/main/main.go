@@ -208,5 +208,5 @@ func main() {
 //}
 
 func printVersion() {
-	fmt.Println("04.02")
+	fmt.Println("04.03")
 }
