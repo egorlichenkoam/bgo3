@@ -57,7 +57,7 @@ func (s *Server) isPost(w http.ResponseWriter, method string) bool {
 	log.Printf("%s - %s", s.name, "Start isPost")
 	log.Printf("%s - method : %s", s.name, method)
 	if method != "POST" {
-		s.error(w, errors.New("support only post methods"), 517)
+		s.error(w, errors.New("support only post methods"), http.StatusMethodNotAllowed)
 		return false
 	}
 	log.Printf("%s - %s", s.name, "End isPost")
@@ -68,7 +68,7 @@ func (s *Server) readFormValueInt64(key string, w http.ResponseWriter, r *http.R
 	log.Printf("%s - %s : %s", s.name, "Start readFormValueInt64", key)
 	val, err := strconv.ParseInt(r.FormValue(key), 10, 64)
 	if err != nil {
-		s.error(w, errors.New(fmt.Sprintf("%s : %s", key, err.Error())), 517)
+		s.error(w, errors.New(fmt.Sprintf("%s : %s", key, err.Error())), 500)
 		return val, err
 	}
 	log.Printf("%s - %s : %s", s.name, "End readFormValueInt64", key)
@@ -95,10 +95,12 @@ func (s *Server) addCard(w http.ResponseWriter, r *http.Request) {
 	}
 	personId, err := s.readFormValueInt64("personId", w, r)
 	if err != nil {
+		s.error(w, errors.New(fmt.Sprintf("%s", err.Error())), 500)
 		return
 	}
 	cardTypeInt64, err := s.readFormValueInt64("cardType", w, r)
 	if err != nil {
+		s.error(w, errors.New(fmt.Sprintf("%s", err.Error())), 500)
 		return
 	}
 	if cardTypeInt64 != 0 && cardTypeInt64 != 1 {
@@ -111,6 +113,7 @@ func (s *Server) addCard(w http.ResponseWriter, r *http.Request) {
 	}
 	issuer, err := s.readFormValueStr("issuer", w, r)
 	if err != nil {
+		s.error(w, errors.New(fmt.Sprintf("%s", err.Error())), 500)
 		return
 	}
 	if !s.personSvc.Exist(personId) {
@@ -121,10 +124,10 @@ func (s *Server) addCard(w http.ResponseWriter, r *http.Request) {
 		s.error(w, errors.New("person have no cards, therefore person can't add card"), 517)
 		return
 	}
-	card := s.cardSvc.Create(issuer, personId, 100_00, card.Rub, strconv.FormatInt(rand.Int63(), 10), cardType)
-	responseBody, err := json.Marshal(card.DTO())
+	newCard := s.cardSvc.Create(issuer, personId, 100_00, card.Rub, strconv.FormatInt(rand.Int63(), 10), cardType)
+	responseBody, err := json.Marshal(newCard.DTO())
 	if err != nil {
-		s.error(w, err, 517)
+		s.error(w, err, 500)
 		return
 	}
 	w.Header().Add("Content-Type", "application/json")
@@ -143,6 +146,7 @@ func (s *Server) getCards(w http.ResponseWriter, r *http.Request) {
 	}
 	personId, err := s.readFormValueInt64("personId", w, r)
 	if err != nil {
+		s.error(w, errors.New(fmt.Sprintf("%s", err.Error())), 500)
 		return
 	}
 	if !s.personSvc.Exist(personId) {
